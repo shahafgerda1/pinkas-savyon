@@ -191,6 +191,18 @@ function migrate(){
     }
     DATA.version=7; changed=true;
   }
+  if((DATA.version||1) < 8){
+    let tk=DATA.topics.find(x=>x.id==="tkeshev");
+    if(!tk){
+      tk={id:"tkeshev",title:"שפת הקשב: מקשיבים לגוף",world:"w1",description:"פתיחת שנה של הקשבה, רוגע וחיבור: ללמוד להקשיב לשפה שבה הגוף מדבר איתנו, ולבנות ערכת עוגנים אישית שמלווה את התלמיד לאורך השנה.",practices:[]};
+      const i=DATA.topics.findIndex(x=>x.id==="t4");
+      DATA.topics.splice(i>=0?i+1:DATA.topics.length,0,tk); changed=true;
+    }
+    [["keshev1","מצגת: שפת הקשב, מקשיבים לגוף","images/prez-keshev-1.jpg","מצגת/שפת-הקשב-מקשיבים-לגוף.pdf","מצגת פתיחת השנה: הגוף מדבר בלי מילים, מפת החום של הגוף, אבן הרגעה אישית וכף יד חמשת העוגנים (6 שקופיות)."],
+     ["keshev2","מדריך למורה: שפת הקשב","images/prez-keshev-guide.jpg","מצגת/שפת-הקשב-מדריך-למורה.pdf","המדריך הפדגוגי שמלווה את המצגת: ציוד נדרש, תסריט מוצע לכל שקופית, התאמה גילאית, ומה עושים עם תלמיד בהצפה או בקיפאון."]]
+      .forEach(([id,title,img,file,explanation])=>{ if(!tk.practices.some(p=>p.id===id)){ tk.practices.push({id,page:null,img,title,explanation,file}); changed=true; } });
+    DATA.version=8; changed=true;
+  }
   if(changed) save();
 }
 function save(){
