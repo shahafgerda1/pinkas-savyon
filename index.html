@@ -118,7 +118,7 @@ let DATA, edit=false, view={name:"home"}, q="";
 let lb={list:[],i:0};
 
 function clone(o){return JSON.parse(JSON.stringify(o));}
-function load(){ const s=localStorage.getItem(LS_KEY); DATA = s?JSON.parse(s):clone(window.SEED_DATA); migrate(); }
+function load(){ const s=localStorage.getItem(LS_KEY); DATA = s?JSON.parse(s):clone(window.SEED_DATA); migrate(); applyAdds(); }
 function pageLoc(pg){ for(const t of DATA.topics){ const i=t.practices.findIndex(p=>p.page===pg); if(i>=0) return {t,i}; } return null; }
 function migrate(){
   let changed=false;
@@ -206,7 +206,7 @@ function migrate(){
   if(changed) save();
 }
 function save(){
-  try{ localStorage.setItem(LS_KEY, JSON.stringify(DATA)); }
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(stripAdds(DATA))); }
   catch(e){ alert("⚠️ לא הצלחתי לשמור את השינויים — ייתכן שאחסון הדפדפן מלא.\nכדאי לעשות גיבוי (⬇️) ולמחוק פריטים כבדים שאינם בשימוש."); }
 }
 function world(id){ return DATA.worlds.find(w=>w.id===id)||DATA.worlds[0]; }
@@ -302,7 +302,7 @@ function renderTopic(id){
 
 function practiceCard(t,p,idx){
   const isFile = !!p.file;
-  const badge = isFile ? "📑 מצגת" : (p.page ? `עמ' ${p.page}` : "תרגול");
+  const badge = p._by ? `✨ ${esc(p._by)}` : (isFile ? "📑 מצגת" : (p.page ? `עמ' ${p.page}` : "תרגול"));
   const fileUrl = isFile ? encodeURI(p.file) : "";
   const thumbClick = isFile ? `window.open('${fileUrl}','_blank')` : `openLb('${t.id}',${idx})`;
   const playIcon = isFile ? '<span class="play">▶</span>' : '';
@@ -314,6 +314,16 @@ function practiceCard(t,p,idx){
         <h4>${esc(p.title)}</h4>
         <p class="expl">${esc(p.explanation)}</p>
         ${isFile?`<a class="open-file" href="${fileUrl}" target="_blank" rel="noopener">📑 פתיחת המצגת</a>`:''}
+      </div></div>`;
+  }
+  if(p._by){
+    return `<div class="pcard">
+      <div class="thumb${isFile?' is-file':''}" onclick="${thumbClick}"><img loading="lazy" src="${encodeURI(p.img)}" alt="">${playIcon}</div>
+      <div class="pbody">
+        <span class="badge">✨ ${esc(p._by)}</span>
+        <h4>${esc(p.title)}</h4>
+        <p class="expl">${esc(p.explanation)}</p>
+        <div class="hint">תרגול שנוסף באתר ההוספות, ומופיע אצל כולן. תיקון או הסרה נעשים שם.</div>
       </div></div>`;
   }
   const topicOpts = DATA.topics.map(x=>`<option value="${x.id}" ${x.id===t.id?"selected":""}>${esc(x.title)}</option>`).join("");
@@ -407,7 +417,7 @@ function closeLb(){ document.getElementById("lightbox").classList.remove("open")
 function dateStamp(){ const d=new Date(), p=n=>String(n).padStart(2,"0");
   return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; }
 async function exportData(){
-  const json=JSON.stringify(DATA,null,2);
+  const json=JSON.stringify(stripAdds(DATA),null,2);
   const fname=`פנקס-תרגולים-גיבוי-${dateStamp()}.json`;
   // 1) שרת מקומי: שמירה אוטומטית לתיקיית "גיבויים" שבפרויקט
   if(location.protocol.startsWith("http")){
@@ -430,7 +440,7 @@ async function exportData(){
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=fname; a.click();
 }
 function importData(input){ const f=input.files[0]; if(!f)return; const r=new FileReader();
-  r.onload=()=>{ try{ const d=JSON.parse(r.result); if(!d.topics)throw 0; DATA=d; migrate(); save(); goHome(); alert("הגיבוי שוחזר בהצלחה."); }
+  r.onload=()=>{ try{ const d=JSON.parse(r.result); if(!d.topics)throw 0; DATA=d; migrate(); save(); applyAdds(); goHome(); alert("הגיבוי שוחזר בהצלחה."); }
     catch(e){ alert("הקובץ אינו תקין."); } }; r.readAsText(f); input.value=""; }
 function resetData(){ if(!confirm("לאפס לכל התוכן המקורי? כל השינויים שלך יימחקו."))return; localStorage.removeItem(LS_KEY); load(); goHome(); }
 
@@ -448,7 +458,43 @@ document.getElementById("lightbox").onclick=e=>{ if(e.target.id==="lightbox")clo
 document.addEventListener("keydown",e=>{ if(!document.getElementById("lightbox").classList.contains("open"))return;
   if(e.key==="Escape")closeLb(); if(e.key==="ArrowRight")lbStep(1); if(e.key==="ArrowLeft")lbStep(-1); });
 
-load(); render();
+/* ---------- שכבת התוספות המשותפת ----------
+   מה שצוות השפה הקשובה מוסיף באתר ההוספות נמשך לכאן בכל טעינה.
+   התוספות אינן נשמרות בדפדפן: הן נמשכות מחדש בכל פעם, וכך
+   תיקון או הסרה שנעשו שם מגיעים לכולן, והעריכות האישיות נשארות. */
+const ADDS_URL = "https://script.google.com/macros/s/AKfycbwwr4eOX9jFACxB_nyTfk0k-wOOCTKozJE6SIRFRFNjcOZdcvSDWVX5QdmFerebVixoeg/exec?api=additions";
+let ADDS = [];
+function stripAdds(d){
+  const c = JSON.parse(JSON.stringify(d));
+  c.topics = c.topics.filter(t=>!t._add);
+  c.topics.forEach(t=>{ t.practices = t.practices.filter(p=>!p._by); });
+  return c;
+}
+function applyAdds(){
+  if(!ADDS.length) return;
+  ADDS.forEach(a=>{
+    let t = DATA.topics.find(x=>x.id===a.topicId);
+    if(!t){
+      if(!a.newTopic) return;
+      t = {id:a.topicId, title:a.topicTitle, world:a.world,
+           description:"נושא שנפתח על ידי צוות השפה הקשובה.", practices:[], _add:true};
+      DATA.topics.push(t);
+    }
+    if(t.practices.some(x=>x.id===a.id)) return;
+    const item = {id:a.id, page:null, img:a.img, title:a.title,
+                  explanation:a.explanation, _by:a.by||"הצוות"};
+    if(a.file) item.file = a.file;
+    t.practices.push(item);
+  });
+}
+function fetchAdds(){
+  fetch(ADDS_URL, {cache:"no-store"})
+    .then(r=>r.json())
+    .then(rows=>{ ADDS = rows||[]; applyAdds(); render(); })
+    .catch(()=>{});  /* אין רשת: הפנקס עובד כרגיל */
+}
+
+load(); render(); fetchAdds();
 </script>
 </body>
 </html>
