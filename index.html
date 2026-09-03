@@ -488,10 +488,13 @@ function applyAdds(){
   });
 }
 function fetchAdds(){
-  fetch(ADDS_URL, {cache:"no-store"})
-    .then(r=>r.json())
-    .then(rows=>{ ADDS = rows||[]; applyAdds(); render(); })
-    .catch(()=>{});  /* אין רשת: הפנקס עובד כרגיל */
+  /* טעינה בתג script ולא ב-fetch: השרת של התוספות יושב בדומיין אחר,
+     וכך הטעינה אינה תלויה בכותרות CORS של גוגל. */
+  window.__pinkasAdds = function(rows){ ADDS = rows||[]; applyAdds(); render(); };
+  const s = document.createElement("script");
+  s.src = ADDS_URL + "&callback=__pinkasAdds";
+  s.onerror = function(){};   /* אין רשת: הפנקס עובד כרגיל */
+  document.body.appendChild(s);
 }
 
 load(); render(); fetchAdds();
