@@ -67,6 +67,12 @@
   .open-file:hover{filter:brightness(1.1)}
   .pbody h4{margin:0;font-size:15px;line-height:1.35}
   .pbody .expl{font-size:13px;color:#555;line-height:1.55;margin:0}
+  .brow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .brow .badge{align-self:auto}
+  .dstrip{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+  .dchip{background:#f0ece2;color:#3a3a3a;border:none;border-radius:999px;padding:5px 11px;
+         font-size:12.5px;font-weight:600;text-decoration:none;display:inline-block}
+  .dchip.file{background:#efe6fb;color:#6a2c91}
   .editrow{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:4px}
   .editrow .spacer{flex:1}
   .field-lbl{font-size:11.5px;color:var(--muted);font-weight:600;margin:2px 0 -2px}
@@ -300,19 +306,37 @@ function renderTopic(id){
   app.innerHTML = h;
 }
 
+/* תרגול שנוסף באתר ההוספות ויש בו כמה מסמכים: רצועת שמות מתחת להסבר.
+   תמונה נפתחת בתצוגה הגדולה בתוך התרגול עצמו, ומצגת נפתחת בלשונית. */
+function groupImgs(p){ return (p._docs||[]).filter(d=>d.kind!=="מצגת"); }
+function docsStrip(t,p){
+  if(!p._docs) return "";
+  const imgs = groupImgs(p);
+  return `<div class="dstrip">` + p._docs.map((d,i)=>{
+    const label = esc(d.name || `מסמך ${i+1}`);
+    if(d.kind==="מצגת")
+      return d.file ? `<a class="dchip file" href="${encodeURI(d.file)}" target="_blank" rel="noopener">📑 ${label}</a>` : "";
+    return `<button class="dchip" onclick="openLbGroup('${t.id}','${p.id}',${imgs.indexOf(d)})">${label}</button>`;
+  }).join("") + `</div>`;
+}
 function practiceCard(t,p,idx){
   const isFile = !!p.file;
+  const group = !!p._docs;
   const badge = p._by ? `✨ ${esc(p._by)}` : (isFile ? "📑 מצגת" : (p.page ? `עמ' ${p.page}` : "תרגול"));
+  const count = group ? `<span class="badge file">${p._docs.length} מסמכים</span>` : "";
   const fileUrl = isFile ? encodeURI(p.file) : "";
-  const thumbClick = isFile ? `window.open('${fileUrl}','_blank')` : `openLb('${t.id}',${idx})`;
+  const thumbClick = group ? (groupImgs(p).length ? `openLbGroup('${t.id}','${p.id}',0)`
+                                                  : `window.open('${encodeURI(p._docs[0].file||"")}','_blank')`)
+                           : (isFile ? `window.open('${fileUrl}','_blank')` : `openLb('${t.id}',${idx})`);
   const playIcon = isFile ? '<span class="play">▶</span>' : '';
   if(!edit){
     return `<div class="pcard">
       <div class="thumb${isFile?' is-file':''}" onclick="${thumbClick}"><img loading="lazy" src="${encodeURI(p.img)}" alt="${esc(p.title)}">${playIcon}</div>
       <div class="pbody">
-        <span class="badge${isFile?' file':''}">${badge}</span>
+        <div class="brow"><span class="badge${isFile?' file':''}">${badge}</span>${count}</div>
         <h4>${esc(p.title)}</h4>
         <p class="expl">${esc(p.explanation)}</p>
+        ${docsStrip(t,p)}
         ${isFile?`<a class="open-file" href="${fileUrl}" target="_blank" rel="noopener">📑 פתיחת המצגת</a>`:''}
       </div></div>`;
   }
@@ -320,9 +344,10 @@ function practiceCard(t,p,idx){
     return `<div class="pcard">
       <div class="thumb${isFile?' is-file':''}" onclick="${thumbClick}"><img loading="lazy" src="${encodeURI(p.img)}" alt="">${playIcon}</div>
       <div class="pbody">
-        <span class="badge">✨ ${esc(p._by)}</span>
+        <div class="brow"><span class="badge">✨ ${esc(p._by)}</span>${count}</div>
         <h4>${esc(p.title)}</h4>
         <p class="expl">${esc(p.explanation)}</p>
+        ${docsStrip(t,p)}
         <div class="hint">תרגול שנוסף באתר ההוספות, ומופיע אצל כולן. תיקון או הסרה נעשים שם.</div>
       </div></div>`;
   }
@@ -407,6 +432,16 @@ function openLb(tid,idx){ const t=topic(tid);
   lb.i=Math.max(0, imgs.findIndex(p=>p.id===clickedId));
   showLb(); }
 function openLbFrom(tid,idx){ openTopic(tid); setTimeout(()=>openLb(tid,idx),0); }
+/* המסמכים של תרגול אחד, ולא כל התרגולים שבנושא */
+function openLbGroup(tid,pid,i){
+  const t=topic(tid); if(!t)return;
+  const p=t.practices.find(x=>x.id===pid); if(!p||!p._docs)return;
+  const imgs=groupImgs(p); if(!imgs.length)return;
+  lb.list=imgs.map((d,k)=>({img:d.img, page:null, expl:p.explanation,
+    title:p.title + (d.name ? " · " + d.name : (imgs.length>1 ? ` · מסמך ${k+1}` : ""))}));
+  lb.i=Math.min(Math.max(0, i|0), imgs.length-1);
+  showLb();
+}
 function showLb(){ const it=lb.list[lb.i]; if(!it)return; document.getElementById("lbImg").src=it.img;
   document.getElementById("lbCap").innerHTML=`<b>${esc(it.title)}</b>${it.page?` · עמ' ${it.page}`:""}<br>${esc(it.expl)}`;
   document.getElementById("lightbox").classList.add("open"); }
@@ -484,6 +519,8 @@ function applyAdds(){
     const item = {id:a.id, page:null, img:a.img, title:a.title,
                   explanation:a.explanation, _by:a.by||"הצוות"};
     if(a.file) item.file = a.file;
+    /* תרגול אחד שיש בו כמה מסמכים, לכל אחד שם משלו */
+    if(a.docs && a.docs.length > 1) item._docs = a.docs;
     t.practices.push(item);
   });
 }
