@@ -245,14 +245,17 @@ const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&
 
 /* ---------- העדפות קטנות של הצופה (רק נוחות, לא נתונים) ---------- */
 const PREF_KEY = 'pinkasV2Prefs';
-let PREF = {mode:'class', type:'all', by:'doors'};
+let PREF = {type:'all', by:'boger'};
 try{ Object.assign(PREF, JSON.parse(localStorage.getItem(PREF_KEY)||'{}')); }catch(e){}
+if(['me','boger','topics'].indexOf(PREF.by)<0) PREF.by='boger';
+/* "בשבילי" הוא תרגולי הצוות; בשתי הדרכים האחרות מוצג כל מה שאינו לצוות בלבד */
+function curMode(){ return PREF.by==='me' ? 'me' : 'class'; }
 function savePref(){ try{ localStorage.setItem(PREF_KEY, JSON.stringify(PREF)); }catch(e){} }
 
 /* ---------- סינון ---------- */
 function isStaffOnly(p){ return (p.houses||[]).length===1 && p.houses[0]==='צוות' && !(p.audience||[]).includes('class'); }
 function inMode(p, mode){
-  mode = mode||PREF.mode;
+  mode = mode||curMode();
   if(mode==='me') return (p.audience||[]).includes('staff') || (p.houses||[]).includes('צוות');
   if(isStaffOnly(p)) return false;
   if(mode==='student') return !( (p.audience||[]).length && !p.audience.includes('student') && p.audience.includes('staff') );
@@ -260,7 +263,7 @@ function inMode(p, mode){
 }
 function visible(p, type){ type = type||PREF.type; return inMode(p) && (type==='all' || p.type===type); }
 function sortForMode(list){
-  if(PREF.mode!=='student') return list;
+  if(curMode()!=='student') return list;
   return list.slice().sort((a,b)=>((b.audience||[]).includes('student')?1:0)-((a.audience||[]).includes('student')?1:0));
 }
 
@@ -335,7 +338,7 @@ function cardHtml(p){
 function filterLine(){
   const bits = [];
   if(PREF.type!=='all') bits.push('רק '+TYPE_LABEL[PREF.type]);
-  if(PREF.mode!=='class') bits.push(MODES.find(m=>m.id===PREF.mode).label);
+  if(PREF.by==='me') bits.push('בשבילי');
   if(!bits.length) return '';
   return `<div class="filt"><span>מוצג: ${esc(bits.join(' · '))}</span><button type="button" data-act="clear">להציג הכול</button></div>`;
 }
@@ -347,7 +350,7 @@ function renderCover(){
   const typeCounts = Object.fromEntries(TYPES.map(t=>[t.id, inM.filter(p=>p.type===t.id).length]));
   const pool = inM.filter(p=>imgSrc(p) && p.type==='page');
   const todayPool = pool.length ? pool : inM;
-  const today = todayPool.length ? todayPool[hash(todayKey()+PREF.mode)%todayPool.length] : null;
+  const today = todayPool.length ? todayPool[hash(todayKey()+curMode())%todayPool.length] : null;
   app.innerHTML = `<main class="wrap" id="main">
     <header class="cover-hero">
       <div class="brand"><img src="logo-hi.png" alt="סמל בית ספר סביון">
@@ -355,14 +358,10 @@ function renderCover(){
       <div class="search"><label for="q" class="hint">חיפוש לפי שם או מילה</label>
         <form data-act="search" role="search"><input id="q" type="search" placeholder="למשל: רמזור, נשימה, כעס" autocomplete="off" enterkeyhint="search"><button type="submit">חיפוש</button></form></div>
     </header>
-    <div class="seg" role="group" aria-label="למי התרגול">
-      ${MODES.map(m=>`<button type="button" data-mode="${m.id}" aria-pressed="${PREF.mode===m.id}">${m.label}</button>`).join('')}
-    </div>
-    ${PREF.mode==='student'?`<p class="hint">התיוג "לתלמיד אחד" עוד חלקי: מופיעים כל התרגולים שאינם לצוות, ומה שסומן כפרטני ראשון.</p>`:''}
     <section class="sect" aria-labelledby="h-doors">
       <h2 id="h-doors">מה צריך עכשיו?</h2>
       <div class="seg" role="group" aria-label="איך מחפשים">
-        ${[['doors','לפי צורך'],['topics','לפי נושא'],['boger','בוגר סביון']].map(b=>`<button type="button" data-by="${b[0]}" aria-pressed="${PREF.by===b[0]}">${b[1]}</button>`).join('')}
+        ${[['me','בשבילי'],['boger','לפי בוגר סביון'],['topics','לפי נושא']].map(b=>`<button type="button" data-by="${b[0]}" aria-pressed="${PREF.by===b[0]}">${b[1]}</button>`).join('')}
       </div>
       ${coverBrowse(vis)}
     </section>
@@ -391,6 +390,10 @@ function renderCover(){
 
 /* ---------- שלוש דרכים לחפש: לפי צורך (דלתות), לפי נושא, לפי בוגר סביון ---------- */
 function coverBrowse(vis){
+  if(PREF.by==='me'){
+    return vis.length ? `<p class="hint">תרגולים קצרים לצוות: לחזור לעצמך בין שיעור לשיעור או בסוף יום עמוס.</p><div class="grid">${vis.map(cardHtml).join('')}</div>`
+                      : `<p class="hint">אין כרגע תרגולים לצוות מהסוג שנבחר.</p>`;
+  }
   if(PREF.by==='topics'){
     const list = D.topics.map(t=>({t, n:vis.filter(p=>p.topic===t.id).length})).filter(x=>x.n)
       .sort((a,b)=>a.t.title.localeCompare(b.t.title,'he'));
@@ -398,7 +401,7 @@ function coverBrowse(vis){
   }
   if(PREF.by==='boger'){
     if(!BOGER) return `<p class="hint">טוען את חלקי בוגר סביון...</p>`;
-    if(!Object.keys(BOGER.topics).length) return `<p class="hint">השיוך של התרגולים לששת החלקים של בוגר סביון נמצא עכשיו באישור של צוות מוביל השפה הקשובה, ויופיע כאן כשיאושר.</p>`;
+    if(!Object.keys(BOGER.topics).length) return `<p class="hint">השיוך של התרגולים לששת החלקים של בוגר סביון נמצא עכשיו באישור של שחף ושל צוות מוביל השפה הקשובה, ויופיע כאן כשיאושר. בינתיים אפשר לחפש לפי נושא.</p>`;
     return `<div class="doors">${BOGER.cats.map(c=>{ const n=vis.filter(p=>bogerOf(p).some(k=>k[0]===String(c.n))).length;
       return `<a class="door${n?'':' empty'}" href="#/boger/${c.n}"><span class="bar" style="background:${c.color}"></span><span class="t">${esc(c.title)}</span><span class="n">${n} תרגולים</span></a>`; }).join('')}</div>`;
   }
@@ -726,7 +729,6 @@ document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElemen
 
 /* ---------- אירועים ---------- */
 app.addEventListener('click', e=>{
-  const m = e.target.closest('[data-mode]'); if(m){ PREF.mode=m.dataset.mode; savePref(); render(); return; }
   const by = e.target.closest('[data-by]'); if(by){ PREF.by=by.dataset.by; savePref(); render(); return; }
   const t = e.target.closest('[data-type]'); if(t){ PREF.type=t.dataset.type; savePref(); render(); return; }
   const dbtn = e.target.closest('[data-doc]');
@@ -736,7 +738,7 @@ app.addEventListener('click', e=>{
   const a = e.target.closest('[data-act]'); if(!a) return;
   const act = a.dataset.act;
   if(act==='surprise'){ e.preventDefault(); surprise(); }
-  else if(act==='clear'){ PREF.type='all'; PREF.mode='class'; savePref(); render(); }
+  else if(act==='clear'){ PREF.type='all'; PREF.by='boger'; savePref(); render(); }
   else if(act==='show'){ const id=app.querySelector('main').dataset.id; if(!id) return;
     /* בטלפון אין תצוגת PDF בתוך הדף: המצגת נפתחת בלשונית משלה */
     const p=byId(id), f=p && p.type==='deck' && (p.file || (p.docs&&p.docs[0]&&p.docs[0].file));
