@@ -9213,6 +9213,155 @@ window.PINKAS = {
    "layer": "",
    "houses": [],
    "audience": []
+  },
+  {
+   "id": "kapv9s3oF",
+   "door": 1,
+   "topic": "t4",
+   "type": "audio",
+   "title": "סריקת גוף",
+   "what": "מעבר עדין על הגוף, מכפות הרגליים ועד הראש",
+   "minutes": "10",
+   "layer": "כולם",
+   "houses": [
+    "צעירים",
+    "ביניים",
+    "חטיבה"
+   ],
+   "audience": [],
+   "voice": "חן קס",
+   "audio": "https://drive.google.com/uc?export=download&id=1rIcgFMQR2iLoJsPK3ctY9rXUvpv9s3oF",
+   "short": true
+  },
+  {
+   "id": "kaFwbATwv",
+   "door": 1,
+   "topic": "c909d6a2",
+   "type": "audio",
+   "title": "קשב לנשימה",
+   "what": "מניחים את הקשב על הנשימה, וחוזרים אליה כשהוא נודד",
+   "minutes": "10",
+   "layer": "כולם",
+   "houses": [
+    "צעירים",
+    "ביניים",
+    "חטיבה"
+   ],
+   "audience": [],
+   "voice": "חן קס",
+   "audio": "https://drive.google.com/uc?export=download&id=11tB3R6q1DBF3sEy4u-2NYJu9DFwbATwv",
+   "short": true
+  },
+  {
+   "id": "kaMUAILSi",
+   "door": 6,
+   "topic": "t25",
+   "type": "audio",
+   "title": "קשב בתנועה",
+   "what": "תנועה איטית, ותשומת לב למה שהגוף מרגיש תוך כדי",
+   "minutes": "10",
+   "layer": "כולם",
+   "houses": [
+    "צעירים",
+    "ביניים",
+    "חטיבה"
+   ],
+   "audience": [],
+   "voice": "חן קס",
+   "audio": "https://drive.google.com/uc?export=download&id=1dbMsinXISWlLCh6JsdKFCjSlyMUAILSi",
+   "short": true
+  },
+  {
+   "id": "kaWkS32XH",
+   "door": 6,
+   "topic": "ca6b448a",
+   "type": "audio",
+   "title": "ספירת נשימות",
+   "what": "סופרים נשימות כדי לאסוף את הקשב",
+   "minutes": "10",
+   "layer": "כולם",
+   "houses": [
+    "צעירים",
+    "ביניים",
+    "חטיבה"
+   ],
+   "audience": [],
+   "voice": "חן קס",
+   "audio": "https://drive.google.com/uc?export=download&id=1nG3IjNelMADRNVfJUcH6zwUbOWkS32XH",
+   "short": true
+  },
+  {
+   "id": "kacRBfpLj",
+   "door": 5,
+   "topic": "c80981bb",
+   "type": "audio",
+   "title": "הכרת תודה",
+   "what": "מדיטציה מונחית: לשים לב למה שיש ולהודות עליו",
+   "minutes": "10",
+   "layer": "כולם",
+   "houses": [
+    "צעירים",
+    "ביניים",
+    "חטיבה"
+   ],
+   "audience": [],
+   "voice": "חן קס",
+   "audio": "https://drive.google.com/uc?export=download&id=1qgzyIMAFk_HmCflBy9-5VQvbxcRBfpLj"
+  },
+  {
+   "id": "kafZ5_HhA",
+   "door": 1,
+   "topic": "c909d6a2",
+   "type": "audio",
+   "title": "כמו הר",
+   "what": "מדמיינים הר יציב, שמזג האוויר משתנה סביבו והוא נשאר",
+   "minutes": "10",
+   "layer": "כולם",
+   "houses": [
+    "צעירים",
+    "ביניים",
+    "חטיבה"
+   ],
+   "audience": [],
+   "voice": "חן קס",
+   "audio": "https://drive.google.com/uc?export=download&id=1x-DBUbtnWQdFDhWGN2NXCfh1zfZ5_HhA",
+   "short": true
+  },
+  {
+   "id": "kaGRqLYRp",
+   "door": 6,
+   "topic": "t25",
+   "type": "audio",
+   "title": "תרגיל כוס התה",
+   "what": "שותים כוס תה לאט, בכל החושים",
+   "minutes": "5",
+   "layer": "כולם",
+   "houses": [
+    "צעירים",
+    "ביניים",
+    "חטיבה"
+   ],
+   "audience": [],
+   "voice": "חן קס",
+   "audio": "https://drive.google.com/uc?export=download&id=1VAiIxlL87Vd-7Gg3kjfW4xNYOGRqLYRp",
+   "short": true
+  },
+  {
+   "id": "ka3e30eYQ",
+   "door": 6,
+   "topic": "cf4423cb",
+   "type": "audio",
+   "title": "תרגיל 5-5-5 לבני נוער",
+   "what": "תרגיל עצירה קצר לבני נוער",
+   "minutes": "5",
+   "layer": "חטיבה",
+   "houses": [
+    "חטיבה"
+   ],
+   "audience": [],
+   "voice": "חן קס",
+   "audio": "https://drive.google.com/uc?export=download&id=1HPjgClWu2GUS6e2RzSTQMJiUK3e30eYQ",
+   "short": true
   }
  ]
 };
