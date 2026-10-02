@@ -158,6 +158,11 @@ h1[tabindex="-1"]:focus{outline:none}
 .prose h2{font-size:19px;color:var(--brand);margin-top:8px}
 .prose p,.prose ul{margin:0}
 .prose ul{padding-inline-start:22px}
+.goal{margin:0;font-size:16px;line-height:1.5;color:var(--body)}
+.box.read p{font-size:18px;line-height:1.75}
+.show .txt{overflow-y:auto;max-height:100%;padding:2vh 0}
+.show .txt p.long{font-size:clamp(18px,2.4vw,32px);line-height:1.6;text-align:right}
+.show .ssteps{text-align:right;margin:0;padding-inline-start:1.4em;font-size:clamp(18px,2.4vw,32px);line-height:1.5;display:flex;flex-direction:column;gap:1.2vh}
 .show .open{font-size:15px;font-weight:700}
 
 @media (min-width:720px){
@@ -207,6 +212,8 @@ const MODES = [
   {id:'student', label:'לתלמיד אחד'},
   {id:'me', label:'בשבילי'},
 ];
+/* אתר ההוספה והאישור (שלב 2): כל איש צוות מעלה, וצוות מוביל השפה הקשובה מאשר */
+const ADD_URL = "https://script.google.com/macros/s/AKfycbwwr4eOX9jFACxB_nyTfk0k-wOOCTKozJE6SIRFRFNjcOZdcvSDWVX5QdmFerebVixoeg/exec";
 const ADDS_URL = "https://script.google.com/macros/s/AKfycbwwr4eOX9jFACxB_nyTfk0k-wOOCTKozJE6SIRFRFNjcOZdcvSDWVX5QdmFerebVixoeg/exec?api=additions";
 const ICON_BACK = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
 const ICON_FWD = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>';
@@ -348,7 +355,8 @@ function renderCover(){
         <a class="today" href="#/p/${esc(today.id)}">${imgSrc(today)?`<img src="${esc(imgSrc(today))}" alt="">`:''}
           <span class="in"><span class="t">${esc(today.title)}</span><span class="m">${esc(doorOf(today.door).title)} · ${esc(TYPE_LABEL[today.type])}</span></span></a></section>`:''}
       <div class="sect">
-        <div class="row"><button type="button" class="btn" data-act="surprise">הפתיעו אותי</button></div>
+        <div class="row"><button type="button" class="btn" data-act="surprise">הפתיעו אותי</button>
+          <a class="btn ghost" href="${ADD_URL}" target="_blank" rel="noopener">הוספת תרגול</a></div>
         <div class="search"><label for="q">חיפוש לפי שם או מילה</label>
           <form data-act="search" role="search"><input id="q" type="search" placeholder="למשל: רמזור, נשימה, כעס" autocomplete="off" enterkeyhint="search"><button type="submit">חיפוש</button></form></div>
       </div>
@@ -422,7 +430,7 @@ function norm(s){ return String(s||'').replace(/[֑-ׇ"'׳״]/g,'').toLowerCase(
 function renderSearch(qs){
   const words = norm(qs).split(/\s+/).filter(Boolean);
   const hits = !words.length ? [] : D.practices.filter(p=>inMode(p)).filter(p=>{
-    const hay = norm([p.title,p.what,p.note,(topicOf(p.topic)||{}).title,doorOf(p.door).title,TYPE_LABEL[p.type],p.layer].join(' '));
+    const hay = norm([p.title,p.what,p.note,(p.full||{}).goal,(p.full||{}).prep,(topicOf(p.topic)||{}).title,doorOf(p.door).title,TYPE_LABEL[p.type],p.layer].join(' '));
     return words.every(w=>hay.includes(w));
   });
   hits.sort((a,b)=>(norm(b.title).includes(words[0]||'')?1:0)-(norm(a.title).includes(words[0]||'')?1:0));
@@ -451,7 +459,7 @@ function tagsHtml(p){
   return `<div class="tags">${t.join('')}</div>`;
 }
 function noteBox(p){ return p.note?`<div class="box warn"><h2>שימו לב</h2><p>${esc(p.note)}</p></div>`:''; }
-function whyBox(p){ const t=topicOf(p.topic); return t&&t.why?`<div class="box"><h2>למה זה עובד</h2><p>${esc(t.why)}</p></div>`:''; }
+function whyBox(p){ const t=topicOf(p.topic), w=p.why||(t&&t.why); return w?`<div class="box"><h2>למה זה עובד</h2><p>${esc(w)}</p></div>`:''; }
 function moreHtml(p){
   const more = siblings(p).filter(x=>x.id!==p.id);
   if(!more.length) return '';
@@ -460,7 +468,8 @@ function moreHtml(p){
     ${more.length>4?`<a class="back" href="#/door/${p.door}?t=${esc(p.topic)}">לכל ${more.length+1} התרגולים בנושא</a>`:''}</section>`;
 }
 function bylineHtml(p){
-  return p.by?`<div class="byline"><span>הועלה על ידי ${esc(p.by)}</span></div>`:'';
+  if(!p.by) return '';
+  return `<div class="byline"><span>הועלה על ידי ${esc(p.by)}${p.approvedBy?` · אושר על ידי ${esc(p.approvedBy)}`:''}</span></div>`;
 }
 function renderPractice(p){
   const t = topicOf(p.topic) || {title:doorOf(p.door).title};
@@ -493,26 +502,32 @@ function renderPractice(p){
         ${p.voice?`<div style="font-size:15px">בקול של ${esc(p.voice)}</div>`:''}
       </div>
       ${p.what?`<p class="lead">${esc(p.what)}</p>`:''}
-      ${p.full?`<div class="box"><h2>רוצה להנחות בקול שלך?</h2><p>${esc(p.full)}</p></div>`:''}
+      ${fullHtml(p)}
       ${noteBox(p)}${whyBox(p)}`;
-  } else if(p.type==='activity'){
-    const facts = [['משתתפים',p.players],['זמן',p.minutes?p.minutes+' דק׳':''],['גיל',p.layer]].filter(f=>f[1]);
+  } else {
+    /* פעילות ותרגול כתוב: אותה תבנית, וכל שדה מופיע רק כשיש בו תוכן */
+    const F = p.full || {};
+    const facts = p.type==='activity' ? [['משתתפים',p.players],['זמן',p.minutes?p.minutes+' דק׳':''],['גיל',p.layer]].filter(f=>f[1]) : [];
     body = `<div class="ptitle"><h1>${esc(p.title)}</h1>${tagsHtml(p)}${p.what?`<p class="lead">${esc(p.what)}</p>`:''}</div>
       ${facts.length?`<div class="facts" style="grid-template-columns:repeat(${facts.length},minmax(0,1fr))">${facts.map(f=>`<div class="fact"><span class="k">${f[0]}</span><span class="v">${esc(f[1])}</span></div>`).join('')}</div>`:''}
-      ${p.prep?`<div class="box"><h2>מה להכין</h2><p>${esc(p.prep)}</p></div>`:''}
-      ${p.steps&&p.steps.length?`<div class="box"><h2>איך משחקים</h2><ol class="steps">${p.steps.map(s=>`<li>${esc(s)}</li>`).join('')}</ol></div>`:''}
-      ${p.question?`<div class="box"><h2>שאלה לסיום</h2><p>${esc(p.question)}</p></div>`:''}
-      ${!p.steps?`<p class="pending">ההנחיה המלאה, שלב אחרי שלב, תתווסף כשיגיעו מסמכי המקור.</p>`:''}
+      ${fullHtml(p)}
+      ${!F.steps && !F.text ? `<p class="pending">ההנחיה המלאה תתווסף בהמשך.</p>` : ''}
       ${noteBox(p)}${whyBox(p)}
-      <button type="button" class="btn" data-act="show">הקרנת ההוראות על הלוח</button>`;
-  } else { /* write */
-    body = `<div class="ptitle"><h1>${esc(p.title)}</h1>${tagsHtml(p)}${p.what?`<p class="lead">${esc(p.what)}</p>`:''}</div>
-      ${p.full?`<div class="box"><h2>הטקסט להקראה</h2><p>${esc(p.full)}</p></div>`:`<p class="pending">הטקסט המלא להקראה יתווסף כשיגיעו מסמכי המקור.</p>`}
-      ${noteBox(p)}${whyBox(p)}
-      <button type="button" class="btn" data-act="show">הקרנה על הלוח</button>`;
+      <button type="button" class="btn" data-act="show">${p.type==='activity'?'הקרנת ההוראות על הלוח':'הקרנה על הלוח'}</button>`;
   }
   app.innerHTML = `<main class="wrap narrow" id="main" data-id="${esc(p.id)}">${head}${body}${bylineHtml(p)}${moreHtml(p)}</main>`;
   if(p.audio) wireAudio(p);
+}
+function fullHtml(p){
+  const F = p.full || {}, out = [];
+  if(F.goal) out.push(`<p class="goal"><b>המטרה:</b> ${esc(F.goal)}</p>`);
+  if(F.prep) out.push(`<div class="box"><h2>מה להכין</h2><p>${esc(F.prep)}</p></div>`);
+  if(F.steps && F.steps.length) out.push(`<div class="box"><h2>${p.type==='activity'?'איך עושים':'שלב אחרי שלב'}</h2><ol class="steps">${F.steps.map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div>`);
+  if(F.text) out.push(`<div class="box read"><h2>${p.type==='audio'?'רוצה להנחות בקול שלך?':'הטקסט להקראה'}</h2><p>${esc(F.text)}</p></div>`);
+  if(F.questions) out.push(`<div class="box"><h2>שאלות לשיחה</h2><p>${esc(F.questions)}</p></div>`);
+  if(F.closing) out.push(`<div class="box"><h2>לסיום</h2><p>${esc(F.closing)}</p></div>`);
+  if(F.tip) out.push(`<div class="box"><h2>טיפ למורה</h2><p>${esc(F.tip)}</p></div>`);
+  return out.join('');
 }
 function fileUrl(f){ return /^https?:/.test(f) ? f : '../'+f.split('/').map(encodeURIComponent).join('/'); }
 function embedUrl(f){ return /^https?:/.test(f) ? f.replace(/\/view(\?.*)?$/,'/preview') : fileUrl(f)+'#view=FitH'; }
@@ -570,7 +585,11 @@ function renderShow(p, q){
   } else if(imgSrc(p)){
     stage = `<img src="${esc(cur.img||imgSrc(p))}" alt="${esc(p.title)}">`;
   } else {
-    stage = `<div class="txt"><h2>${esc(p.title)}</h2>${p.steps&&p.steps.length?`<p>${p.steps.map((s,k)=>(k+1)+'. '+esc(s)).join('\n')}</p>`:(p.full?`<p>${esc(p.full)}</p>`:`<p>${esc(p.what)}</p>`)}</div>`;
+    const F=p.full||{};
+    const inner = F.text ? `<p class="long">${esc(F.text)}</p>`
+      : (F.steps&&F.steps.length) ? `<ol class="ssteps">${F.steps.map(x=>`<li>${esc(x)}</li>`).join('')}</ol>`
+      : `<p>${esc(p.what)}</p>`;
+    stage = `<div class="txt"><h2>${esc(p.title)}</h2>${inner}</div>`;
   }
   closeShowDom();
   const el = document.createElement('div');
@@ -661,26 +680,33 @@ document.getElementById('skip').addEventListener('click', e=>{
 /* ---------- התוספות של צוות השפה הקשובה, לקריאה בלבד ---------- */
 function applyAdds(rows){
   const wDoor = {w1:1,w2:2,w3:3,w4:4,w5:5,w6:6};
+  const LAYER_HOUSES = {'כולם':['צעירים','ביניים','חטיבה'],'צעירים':['צעירים'],'ביניים':['ביניים'],'חטיבה':['חטיבה'],'צוות':['צוות']};
   (rows||[]).forEach(a=>{
     if(!a || !a.id || byId(a.id)) return;
+    const door = Number(a.door) || wDoor[a.world];
+    if(!door) return;
     let t = topicOf(a.topicId);
     if(!t){
-      if(!a.topicTitle || !wDoor[a.world]) return;
-      t = {id:a.topicId, title:a.topicTitle, door:wDoor[a.world], description:''};
+      t = {id:a.topicId || ('staff_d'+door), title:a.topicTitle || 'מהצוות', door:door, description:''};
       D.topics.push(t);
     }
     const docs = (a.docs||[]).filter(d=>d && (d.img||d.file));
-    const isDeck = docs.length ? docs.every(d=>d.kind==='מצגת') : !!a.file;
-    D.practices.push({id:a.id, door:t.door, topic:t.id, type:isDeck?'deck':'page',
+    const type = a.type || ((docs.length ? docs.every(d=>d.kind==='מצגת') : !!a.file) ? 'deck' : 'page');
+    /* בפעילות כל שורה היא שלב; בתרגול כתוב ובהקלטה זה טקסט רציף */
+    const lines = String(a.text||'').split(/\n+/).map(x=>x.trim()).filter(Boolean);
+    const full = !a.text ? {} : (type==='activity' && lines.length>1 ? {steps:lines} : {text:a.text});
+    D.practices.push({id:a.id, door:door, topic:t.id, type:type,
       title:a.title||'', what:a.explanation||'', img:a.img||'', file:a.file||(docs[0]&&docs[0].file)||'',
-      docs: docs.length>1 ? docs : null, layer:'', houses:[], audience:[], by:a.by||''});
+      docs: docs.length>1 ? docs : null, audio:a.audio||'', full:full,
+      layer:a.layer||'', houses:LAYER_HOUSES[a.layer]||[], audience:a.audience||[], minutes:a.minutes||'',
+      why:a.why||'', by:a.by||'', approvedBy:a.approvedBy||''});
   });
   render();
 }
 function fetchAdds(){
   window.__pinkasAdds = applyAdds;
   const s = document.createElement('script');
-  s.src = ADDS_URL + '&callback=__pinkasAdds';
+  s.src = ADDS_URL + '&v=2&callback=__pinkasAdds';
   s.onerror = function(){};  /* בלי רשת: הפנקס עובד כרגיל */
   document.body.appendChild(s);
 }
