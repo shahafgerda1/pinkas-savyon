@@ -291,7 +291,9 @@ function inMode(p, mode){
 /* תרגול רגיש (עדן, 2.10.2026): יש לו "שימו לב" או סימון. לא בהגרלה, וההקרנה לא עוברת אליו בחיצים */
 function isSensitive(p){ return !!(p.note || p.sensitive); }
 function visible(p, type){ type = type||PREF.type; return inMode(p) && (type==='all' || p.type===type); }
+/* סדרה לבית אחד ולפי דרישה (מסע הקברניט, צעירים): נשארת בנושא, אבל בסוף הרשימה ולא בכריכה */
 function sortForMode(list){
+  list = list.slice().sort((a,b)=>(a.onDemand?1:0)-(b.onDemand?1:0));
   if(curMode()!=='student') return list;
   return list.slice().sort((a,b)=>((b.audience||[]).includes('student')?1:0)-((a.audience||[]).includes('student')?1:0));
 }
@@ -378,7 +380,7 @@ function renderCover(){
   const vis = D.practices.filter(p=>visible(p));
   const inM = D.practices.filter(p=>inMode(p));
   const typeCounts = Object.fromEntries(TYPES.map(t=>[t.id, inM.filter(p=>p.type===t.id).length]));
-  const pool = inM.filter(p=>imgSrc(p) && p.type==='page' && !isSensitive(p));
+  const pool = inM.filter(p=>imgSrc(p) && p.type==='page' && !isSensitive(p) && !p.onDemand);
   const todayPool = pool.length ? pool : inM;
   const today = todayPool.length ? todayPool[hash(todayKey()+curMode())%todayPool.length] : null;
   app.innerHTML = `<main class="wrap" id="main">
@@ -453,7 +455,7 @@ function coverBrowse(vis){
 }
 /* שלוש תמונות קטנות לכל דלת. מתחלפות פעם ביום, כדי שיהיה מסקרן לחזור */
 function doorThumbs(list, key){
-  const imgs = list.filter(p=>p.type==='page' && imgSrc(p));
+  const imgs = list.filter(p=>p.type==='page' && imgSrc(p) && !p.onDemand);
   if(!imgs.length) return '';
   const start = hash(todayKey()+key) % imgs.length;
   const pick = [0,1,2].map(i=>imgs[(start+i*7)%imgs.length]).filter((p,i,a)=>a.indexOf(p)===i);
@@ -809,7 +811,7 @@ function placeHiddenWings(screen){
    הרשימה נקבעת ב-build_v2.py (השדה short) ומתועדת ב-שינויים-לבדיקת-חן.md */
 function surprise(){
   const cur = parseHash();
-  const base = D.practices.filter(p=>p.short && !isSensitive(p));
+  const base = D.practices.filter(p=>p.short && !isSensitive(p) && !p.onDemand);
   const pool = base.filter(p=>inMode(p) && !(cur.parts[0]==='p' && cur.parts[1]===p.id));
   const list = pool.length ? pool : base;
   go('#/p/'+list[Math.floor(Math.random()*list.length)].id);
