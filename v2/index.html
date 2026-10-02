@@ -62,6 +62,20 @@ body.playing .hiderow{visibility:hidden}
 .door .bar{width:28px;height:8px;border-radius:4px}
 .door .t{font-family:Rubik,sans-serif;font-weight:700;font-size:17px;line-height:1.2}
 .door .n{font-size:14px;color:var(--ink2)}
+/* המהלך השנתי */
+.mh{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.mh a,.mh li.none{display:flex;align-items:center;gap:12px;min-height:48px;padding:6px 12px;border-radius:12px;background:var(--card);color:var(--ink)}
+.mh a:hover{box-shadow:0 0 0 2px var(--line);color:var(--ink)}
+.mh .num{flex-shrink:0;width:30px;height:30px;border-radius:15px;background:var(--soft);color:var(--brand);font-family:Rubik,sans-serif;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:14px}
+.mh .tt{flex:1;font-weight:600}
+.mh .c{font-size:14px;color:var(--ink2)}
+.mh li.none{background:transparent;border:1px dashed var(--line);color:var(--ink2)}
+.mh li.none .tt{font-weight:400}
+.sub2{font-size:18px;margin-top:6px}
+.season{background:var(--card);border-radius:var(--r);padding:14px 16px;border-inline-start:5px solid #D9A51C}
+.season h2{font-size:18px}
+.stepnav{justify-content:space-between}
+.stepnav .btn{flex:0 1 auto}
 /* הפוסטר "מיהו בוגר סביון?" וששת חלקי הפאזל עליו כאזורים לחיצים */
 .poster{position:relative;margin:0;border-radius:var(--r);overflow:hidden;background:#fff;max-width:640px;align-self:center;width:100%}
 .poster img{width:100%;height:auto;display:block}
@@ -300,6 +314,7 @@ function render(){
   else if(parts[0]==='p' && byId(parts[1])) renderPractice(byId(parts[1]));
   else if(parts[0]==='search') renderSearch(q.get('q')||'');
   else if(parts[0]==='topic' && topicOf(parts[1])) renderTopic(parts[1]);
+  else if(parts[0]==='step' && STEPS[(+parts[1]||0)-1]) renderStep(+parts[1]);
   else if(parts[0]==='boger' && /^[1-6]$/.test(parts[1]||'')) renderBoger(+parts[1], q.get('i')||'');
   else if(parts[0]==='negishut') renderA11y();
   else renderCover();
@@ -364,6 +379,7 @@ function renderCover(){
       <div class="search"><label for="q" class="hint">חיפוש לפי שם או מילה</label>
         <form data-act="search" role="search"><input id="q" type="search" placeholder="למשל: רמזור, נשימה, כעס" autocomplete="off" enterkeyhint="search"><button type="submit">חיפוש</button></form></div>
     </header>
+    ${seasonHtml()}
     <section class="sect" aria-labelledby="h-doors">
       <h2 id="h-doors">מה צריך עכשיו?</h2>
       <div class="seg" role="group" aria-label="איך מחפשים">
@@ -460,6 +476,8 @@ function renderBoger(n, item){
     <div class="dhead"><span class="bar" style="background:${c.color}"></span><h1>${esc(c.title)}</h1>
       <div class="m">חלק ${n} בבוגר סביון · ${inPart.length} תרגולים</div></div>
     ${filterLine()}
+    ${item ? '' : mahalachHtml(n)}
+    ${item ? '' : `<h2 class="sub2">כל התרגולים בחלק, לפי היגדי בוגר סביון</h2>`}
     <nav class="chips scroll" aria-label="היגדים">
       <a class="chip" href="#/boger/${n}" aria-current="${!item}">הכול <span class="c">${inPart.length}</span></a>
       ${counts.filter(x=>x.n).map(x=>`<a class="chip" href="#/boger/${n}?i=${x.k}" aria-current="${item===x.k}">${esc(x.txt)} <span class="c">${x.n}</span></a>`).join('')}
@@ -483,6 +501,93 @@ function fetchBoger(){
   s.src = ADD_URL + '?api=boger&callback=__pinkasBoger';
   s.onerror = function(){ BOGER = {cats:[], topics:{}}; render(); };
   document.body.appendChild(s);
+}
+
+/* ---------- המהלך התרגולי השנתי לפי דמות בוגר סביון ----------
+   מקור: הגיליון "מהלך תרגולי שנתי סביון תשפ"ז" (1OuAu6IXrUhwge8pTxdVLGYpknZUcc4s5BjNAMj5PW_4),
+   חמישה תחומי SEL ובכל אחד נושאים לפי הסדר. כל תחום יושב על חלק בבוגר סביון.
+   topics הם נושאי הפנקס שמתרגלים את נושא המהלך (שיוך של Claude, 2.10.2026);
+   נושא בלי topics עוד אין לו תרגולים בפנקס. */
+const MAHALACH = [
+  {part:2, domain:'מודעות עצמית', goal:'להכיר את החוויה הפנימית', skills:'מודעות עצמית, זיהוי רגשות, זיהוי תחושות גוף, הכרת הטוב, רפלקציה', steps:[
+    {t:'תודעת מתחיל', topics:['c08286b4']},
+    {t:'מה שלומי עכשיו? זיהוי ושיום רגשות', topics:['t2','t11','t10']},
+    {t:"צ'ק אין", topics:['t1','t5']},
+    {t:'סריקת גוף: הגוף כעוגן', topics:['t4','tkeshev']},
+    {t:'צפייה במחשבות', topics:['c245c5b2','t6']},
+    {t:'האור שבי', topics:['t14','t20']},
+    {t:'חיבור למי שאני', topics:['t21','cb7f729c','t28']},
+    {t:'הכרת הטוב', topics:['t27']}]},
+  {part:4, domain:'ניהול עצמי', goal:'ויסות ובחירה מודעת', skills:'ויסות עצמי, שליטה בדחפים, גמישות מחשבתית, התמדה, קבלת החלטות', steps:[
+    {t:'עצירה: כלי ויסות שונים', topics:['cf4423cb','t3','c909d6a2']},
+    {t:'בחירה: השהיית תגובה', topics:['cc44844c','t13']},
+    {t:'מחשבות: התבוננות ועיבוד', topics:['t7','t19','t29','t15']},
+    {t:'מלכודות חשיבה', topics:['c33b728e','t24']},
+    {t:'שהייה באי נחת: נעים ולא נעים', topics:['cda4dfcb','t12','cfdc2748']},
+    {t:'גישה מקבלת', topics:['topen']},
+    {t:'מאמץ נכון', topics:['t17','t18']},
+    {t:'בחירת כוונה', topics:['c1f3916d','t9']},
+    {t:'פעולות להשגת הכוונה', topics:['t8']},
+    {t:'הכרת הטוב ברגעי מורכבות וקושי', topics:[]}]},
+  {part:1, domain:'מודעות חברתית', goal:'ראיית האחר ואמפתיה', skills:'אמפתיה, הקשבה, לקיחת פרספקטיבה, כבוד לשונות', steps:[
+    {t:'נקודות מבט שונות', topics:['t16']},
+    {t:'ראיית האחר', topics:['t22','cdd8aca5']},
+    {t:'קשב לאחר', topics:['tla','t26']}]},
+  {part:3, domain:'ניהול קשרים', goal:'יצירת קשרים מיטיבים', skills:'תקשורת מיטיבה, שיתוף פעולה, פתרון קונפליקטים, נתינה', steps:[
+    {t:'חברות', topics:['c2011488','t23']},
+    {t:'כוחה של מילה', topics:['cc5ba7ca']},
+    {t:'נתינה', topics:[]},
+    {t:'שיתוף פעולה', topics:['c02db86c']},
+    {t:'הכרת הטוב בהקשר החברתי והכיתתי', topics:[]},
+    {t:'הכרת הטוב ברגעי קושי, בהקשר הכיתתי', topics:[]}]},
+  {part:6, domain:'אחריות בלמידה', goal:'פיתוח לומד עצמאי ונוכח', skills:'ניהול למידה, ניהול הקשב, התמודדות עם טעויות, הצבת מטרות, אחריות אישית', steps:[
+    {t:'איסוף קשב: ניהול הקשב בלמידה', topics:['ca6b448a','t25']},
+    {t:'תודעת מתחיל בלמידה', topics:[]},
+    {t:'דפוס חשיבה מתפתח', topics:[]},
+    {t:'התמודדות עם טעויות', topics:[]},
+    {t:'אחריות: למידה מתוך כוונה', topics:[]},
+    {t:'התמדה', topics:[]},
+    {t:'ויסות בתסכול, באי הצלחה ובקושי', topics:[]}]}
+];
+/* מה מתרגלים עכשיו בשנה, לפי הגיליון. חודשים: 1 ינואר ... 12 דצמבר */
+const SEASONS = [
+  {months:[9,10], title:'תחילת השנה', items:[{t:'להגיע: תשומת לב לקשב הפנימי שלי', topics:['t1']}, {t:'תודעת מתחיל', topics:['c08286b4']}, {t:'היכרות עם רגשות', topics:['t2']}]}
+];
+/* מספור רץ לכל שלבי המהלך, כדי שלכל שלב תהיה כתובת */
+const STEPS = []; MAHALACH.forEach(d=>d.steps.forEach(st=>{ st.i = STEPS.length + 1; st.part = d.part; st.domain = d.domain; STEPS.push(st); }));
+function stepPractices(st){ return D.practices.filter(p=>st.topics.includes(p.topic) || st.topics.includes(topicAlias(p.topic))); }
+/* נושא שהצוות פתח בשם של נושא קיים נחשב כמותו */
+function topicAlias(id){ const t=topicOf(id); if(!t) return id; const same=D.topics.find(x=>x.title===t.title && x.id!==id); return same ? same.id : id; }
+function mahalachHtml(n){
+  const d = MAHALACH.find(x=>x.part===n); if(!d) return '';
+  return `<section class="sect mahalach" aria-labelledby="h-mh"><h2 id="h-mh">המהלך השנתי: ${esc(d.domain)}</h2>
+    <p class="hint"><b>${esc(d.goal)}.</b> ${esc(d.skills)}</p>
+    <ol class="mh">${d.steps.map(st=>{ const k=stepPractices(st).filter(p=>visible(p)).length;
+      return k ? `<li><a href="#/step/${st.i}"><span class="num">${st.i}</span><span class="tt">${esc(st.t)}</span><span class="c">${k}</span></a></li>`
+               : `<li class="none"><span class="num">${st.i}</span><span class="tt">${esc(st.t)}</span><span class="c">עוד אין תרגולים</span></li>`; }).join('')}</ol>
+  </section>`;
+}
+function renderStep(i){
+  const st = STEPS[i-1]; const c = bogerCat(st.part);
+  const list = sortForMode(stepPractices(st).filter(p=>visible(p)));
+  const prev = STEPS[i-2], next = STEPS[i];
+  app.innerHTML = `<main class="wrap" id="main">
+    ${homeWing()}${backLink('#/boger/'+st.part, c ? c.title : 'בוגר סביון')}
+    <div class="dhead"><span class="bar" style="background:${c?c.color:'var(--brand)'}"></span><h1>${esc(st.t)}</h1>
+      <div class="m">המהלך השנתי · ${esc(st.domain)} · שלב ${i} מתוך ${STEPS.length} · ${list.length} תרגולים</div></div>
+    ${filterLine()}
+    ${list.length?`<div class="grid">${list.map(cardHtml).join('')}</div>`:`<div class="empty-note">עוד אין בפנקס תרגולים לשלב הזה. אפשר להוסיף דרך "הוספת תרגול".</div>`}
+    <nav class="row stepnav" aria-label="שלבי המהלך">
+      ${prev?`<a class="btn ghost" href="#/step/${prev.i}">→ ${esc(prev.t)}</a>`:''}
+      ${next?`<a class="btn ghost" href="#/step/${next.i}">${esc(next.t)} ←</a>`:''}
+    </nav>
+  </main>`;
+}
+function seasonHtml(){
+  const m = new Date().getMonth() + 1, se = SEASONS.find(x=>x.months.includes(m));
+  if(!se) return '';
+  return `<section class="sect season" aria-labelledby="h-season"><h2 id="h-season">עכשיו במהלך: ${esc(se.title)}</h2>
+    <div class="chips">${se.items.map(it=>{ const t = it.topics[0]; return `<a class="chip" href="#/topic/${esc(t)}">${esc(it.t)}</a>`; }).join('')}</div></section>`;
 }
 
 /* ---------- דלת ---------- */
