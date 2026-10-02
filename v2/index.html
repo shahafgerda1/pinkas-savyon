@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>פנקס התרגולים · סביון</title>
-<link rel="icon" href="logo-hi.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="theme-color" content="#54078F">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Rubik:wght@700;800&display=swap">
@@ -41,6 +44,8 @@ h1,h2,h3{font-family:Rubik,sans-serif;margin:0}
 body.playing .hiderow{visibility:hidden}
 
 /* כריכה */
+.cover-hero{display:flex;flex-direction:column;gap:16px;padding:18px;border-radius:20px;background:linear-gradient(135deg,#EDE3F7 0%,#F6F3EA 70%)}
+.cover-hero .search{max-width:none}
 .brand{display:flex;align-items:center;gap:14px}
 .brand img{width:64px;height:64px;border-radius:14px;object-fit:cover;background:#fff}
 .brand h1{font-weight:800;font-size:28px;line-height:1.1;color:var(--brand)}
@@ -57,6 +62,10 @@ body.playing .hiderow{visibility:hidden}
 .door .bar{width:28px;height:8px;border-radius:4px}
 .door .t{font-family:Rubik,sans-serif;font-weight:700;font-size:17px;line-height:1.2}
 .door .n{font-size:14px;color:var(--ink2)}
+.door .thumbs{display:flex;gap:6px;margin-top:auto;padding-top:4px}
+.door .thumbs img{width:46px;height:46px;object-fit:cover;object-position:top;border-radius:9px;border:1px solid #EEE8F4;background:#fff}
+.duo{display:flex;flex-direction:column;gap:12px}
+.duo .acts{display:flex;flex-direction:column;gap:10px}
 .door.empty{background:transparent;border:1px dashed var(--line)}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{min-height:44px;padding:0 16px;border:1px solid var(--line);border-radius:22px;background:var(--card);font-weight:600;font-size:15px;display:inline-flex;align-items:center;gap:6px;color:var(--ink)}
@@ -167,6 +176,13 @@ a.tag{color:var(--ink);min-height:44px;background:#fff;border:1px solid var(--li
 .show .open{font-size:15px;font-weight:700}
 
 @media (min-width:720px){
+  .cover-hero{flex-direction:row;align-items:center;justify-content:space-between;padding:22px 26px}
+  .cover-hero .search{flex:0 1 440px}
+  .duo{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);align-items:end}
+  .today{flex-direction:row;max-width:none}
+  .today img{width:48%;height:230px;flex-shrink:0}
+  .today .in{justify-content:center;padding:20px}
+  .today .t{font-size:22px}
   .doors{grid-template-columns:repeat(3,minmax(0,1fr))}
   .grid{grid-template-columns:repeat(3,minmax(0,1fr))}
   .card .ph img{height:170px}
@@ -333,8 +349,12 @@ function renderCover(){
   const todayPool = pool.length ? pool : inM;
   const today = todayPool.length ? todayPool[hash(todayKey()+PREF.mode)%todayPool.length] : null;
   app.innerHTML = `<main class="wrap" id="main">
-    <div class="brand"><img src="logo-hi.png" alt="סמל בית ספר סביון">
-      <div><h1>פנקס התרגולים</h1><div class="sub">בית ספר סביון · מצמיח לך כנפיים</div></div></div>
+    <header class="cover-hero">
+      <div class="brand"><img src="logo-hi.png" alt="סמל בית ספר סביון">
+        <div><h1>פנקס התרגולים</h1><div class="sub">בית ספר סביון · מצמיח לך כנפיים</div></div></div>
+      <div class="search"><label for="q" class="hint">חיפוש לפי שם או מילה</label>
+        <form data-act="search" role="search"><input id="q" type="search" placeholder="למשל: רמזור, נשימה, כעס" autocomplete="off" enterkeyhint="search"><button type="submit">חיפוש</button></form></div>
+    </header>
     <div class="seg" role="group" aria-label="למי התרגול">
       ${MODES.map(m=>`<button type="button" data-mode="${m.id}" aria-pressed="${PREF.mode===m.id}">${m.label}</button>`).join('')}
     </div>
@@ -353,17 +373,18 @@ function renderCover(){
         ${TYPES.filter(t=>typeCounts[t.id]).map(t=>`<button type="button" class="chip" data-type="${t.id}" aria-pressed="${PREF.type===t.id}">${t.label} <span class="c">${typeCounts[t.id]}</span></button>`).join('')}
       </div>
     </section>
-    <div class="cover-cols">
-      ${today?`<section class="sect" aria-labelledby="h-today"><h2 id="h-today">התרגול של היום</h2>
-        <a class="today" href="#/p/${esc(today.id)}">${imgSrc(today)?`<img src="${esc(imgSrc(today))}" alt="">`:''}
-          <span class="in"><span class="t">${esc(today.title)}</span><span class="m">${esc(doorOf(today.door).title)} · ${esc(TYPE_LABEL[today.type])}</span></span></a></section>`:''}
-      <div class="sect">
-        <div class="row"><button type="button" class="btn" data-act="surprise">הפתיעו אותי</button>
-          <a class="btn ghost" href="${ADD_URL}" target="_blank" rel="noopener">הוספת תרגול</a></div>
-        <div class="search"><label for="q">חיפוש לפי שם או מילה</label>
-          <form data-act="search" role="search"><input id="q" type="search" placeholder="למשל: רמזור, נשימה, כעס" autocomplete="off" enterkeyhint="search"><button type="submit">חיפוש</button></form></div>
+    <section class="sect" aria-labelledby="h-today">
+      <h2 id="h-today">התרגול של היום</h2>
+      <div class="duo">
+        ${today?`<a class="today" href="#/p/${esc(today.id)}">${imgSrc(today)?`<img src="${esc(imgSrc(today))}" alt="">`:''}
+          <span class="in"><span class="t">${esc(today.title)}</span><span class="m">${esc(doorOf(today.door).title)} · ${esc(TYPE_LABEL[today.type])}</span>
+          ${today.what?`<span class="m">${esc(today.what)}</span>`:''}</span></a>`:''}
+        <div class="acts">
+          <button type="button" class="btn" data-act="surprise">הפתיעו אותי</button>
+          <a class="btn ghost" href="${ADD_URL}" target="_blank" rel="noopener">הוספת תרגול</a>
+        </div>
       </div>
-    </div>
+    </section>
     <footer class="foot"><a href="#/negishut">הצהרת נגישות</a></footer>
   </main>`;
 }
@@ -383,8 +404,16 @@ function coverBrowse(vis){
   }
   return `<div class="doors">
         ${D.doors.map(d=>{ const n=vis.filter(p=>p.door===d.n).length;
-          return `<a class="door${n?'':' empty'}" href="#/door/${d.n}"><span class="bar" style="background:${d.color}"></span><span class="t">${esc(d.title)}</span><span class="n">${n} תרגולים</span></a>`; }).join('')}
+          return `<a class="door${n?'':' empty'}" href="#/door/${d.n}"><span class="bar" style="background:${d.color}"></span><span class="t">${esc(d.title)}</span><span class="n">${n} תרגולים</span>${doorThumbs(vis.filter(p=>p.door===d.n), 'd'+d.n)}</a>`; }).join('')}
       </div>`;
+}
+/* שלוש תמונות קטנות לכל דלת. מתחלפות פעם ביום, כדי שיהיה מסקרן לחזור */
+function doorThumbs(list, key){
+  const imgs = list.filter(p=>p.type==='page' && imgSrc(p));
+  if(!imgs.length) return '';
+  const start = hash(todayKey()+key) % imgs.length;
+  const pick = [0,1,2].map(i=>imgs[(start+i*7)%imgs.length]).filter((p,i,a)=>a.indexOf(p)===i);
+  return `<span class="thumbs" aria-hidden="true">${pick.map(p=>`<img loading="lazy" src="${esc(imgSrc(p))}" alt="">`).join('')}</span>`;
 }
 /* השיוך לבוגר סביון יושב ברמת הנושא, ורק מה שאושר על ידי שחף והצוות המוביל */
 let BOGER = null;
