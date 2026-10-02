@@ -62,6 +62,12 @@ body.playing .hiderow{visibility:hidden}
 .door .bar{width:28px;height:8px;border-radius:4px}
 .door .t{font-family:Rubik,sans-serif;font-weight:700;font-size:17px;line-height:1.2}
 .door .n{font-size:14px;color:var(--ink2)}
+/* הפוסטר "מיהו בוגר סביון?" וששת חלקי הפאזל עליו כאזורים לחיצים */
+.poster{position:relative;margin:0;border-radius:var(--r);overflow:hidden;background:#fff;max-width:640px;align-self:center;width:100%}
+.poster img{width:100%;height:auto;display:block}
+.poster a{position:absolute;border-radius:14px;transition:background .15s,box-shadow .15s}
+.poster a:hover,.poster a:focus-visible{background:rgba(84,7,143,.10);box-shadow:inset 0 0 0 3px var(--brand);outline:none}
+.poster a .cnt{position:absolute;bottom:6px;left:6px;background:var(--brand);color:#fff;font-weight:700;font-size:12px;line-height:1;padding:5px 7px;border-radius:10px}
 .door .thumbs{display:flex;gap:6px;margin-top:auto;padding-top:4px}
 .door .thumbs img{width:46px;height:46px;object-fit:cover;object-position:top;border-radius:9px;border:1px solid #EEE8F4;background:#fff}
 .duo{display:flex;flex-direction:column;gap:12px}
@@ -402,7 +408,15 @@ function coverBrowse(vis){
   if(PREF.by==='boger'){
     if(!BOGER) return `<p class="hint">טוען את חלקי בוגר סביון...</p>`;
     if(!Object.keys(BOGER.topics).length) return `<p class="hint">השיוך של התרגולים לששת החלקים של בוגר סביון נמצא עכשיו באישור של שחף ושל צוות מוביל השפה הקשובה, ויופיע כאן כשיאושר. בינתיים אפשר לחפש לפי נושא.</p>`;
-    return `<div class="doors">${BOGER.cats.map(c=>{ const n=vis.filter(p=>bogerOf(p).some(k=>k[0]===String(c.n))).length;
+    const cnt = n => vis.filter(p=>bogerOf(p).some(k=>k[0]===String(n))).length;
+    /* מיקום כל חלק בפוסטר, באחוזים מהתמונה (1000×1000) */
+    const AREAS = {1:[2,29.7,23,22.8], 2:[76,29.7,23,22.8], 3:[2,53.8,23,23], 4:[76,53.8,23.5,22.4], 5:[2,77.8,23,22], 6:[76,77.8,23.5,22]};
+    return `<figure class="poster">
+        <img src="boger-poster.jpg" width="1000" height="1000" alt="מיהו בוגר סביון? ששת חלקי הפאזל. לחיצה על חלק פותחת את התרגולים שלו.">
+        ${BOGER.cats.map(c=>{ const a=AREAS[c.n]; if(!a) return '';
+          return `<a href="#/boger/${c.n}" style="left:${a[0]}%;top:${a[1]}%;width:${a[2]}%;height:${a[3]}%" aria-label="${esc(c.title)}, ${cnt(c.n)} תרגולים"><span class="cnt" aria-hidden="true">${cnt(c.n)}</span></a>`; }).join('')}
+      </figure>
+      <div class="doors">${BOGER.cats.map(c=>{ const n=cnt(c.n);
       return `<a class="door${n?'':' empty'}" href="#/boger/${c.n}"><span class="bar" style="background:${c.color}"></span><span class="t">${esc(c.title)}</span><span class="n">${n} תרגולים</span></a>`; }).join('')}</div>`;
   }
   return `<div class="doors">
@@ -456,7 +470,15 @@ function renderBoger(n, item){
   if(on && item){ const box=on.parentElement; box.scrollLeft += on.getBoundingClientRect().left - box.getBoundingClientRect().left - 16; }
 }
 function fetchBoger(){
-  window.__pinkasBoger = function(d){ BOGER = d && d.cats ? d : {cats:[], topics:{}}; render(); };
+  /* הצבעים והסדר של הפוסטר "מיהו בוגר סביון?": זהב בטור הימני, כחול בשמאלי */
+  const POSTER = {2:'#D9A51C', 1:'#5F8FA8', 4:'#E3B83A', 3:'#7FA3B6', 6:'#E9C860', 5:'#9DB9C8'};
+  const ORDER = [2,1,4,3,6,5];
+  window.__pinkasBoger = function(d){
+    BOGER = d && d.cats ? d : {cats:[], topics:{}};
+    BOGER.cats.forEach(c=>{ if(POSTER[c.n]) c.color = POSTER[c.n]; });
+    BOGER.cats.sort((a,b)=>ORDER.indexOf(a.n)-ORDER.indexOf(b.n));
+    render();
+  };
   const s = document.createElement('script');
   s.src = ADD_URL + '?api=boger&callback=__pinkasBoger';
   s.onerror = function(){ BOGER = {cats:[], topics:{}}; render(); };
