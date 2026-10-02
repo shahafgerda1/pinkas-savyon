@@ -117,6 +117,7 @@ h1[tabindex="-1"]:focus{outline:none}
 .ptitle h1{font-weight:800;font-size:26px;line-height:1.15}
 .tags{display:flex;flex-wrap:wrap;gap:8px}
 .tag{padding:6px 12px;border-radius:14px;background:var(--soft);font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:6px}
+a.tag{color:var(--ink);min-height:44px;background:#fff;border:1px solid var(--line)}
 .tag .dot{width:14px;height:6px;border-radius:3px}
 .lead{margin:0;font-size:17px;line-height:1.5}
 .box{display:flex;flex-direction:column;gap:6px;padding:16px;background:var(--card);border-radius:var(--r)}
@@ -228,7 +229,7 @@ const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&
 
 /* ---------- העדפות קטנות של הצופה (רק נוחות, לא נתונים) ---------- */
 const PREF_KEY = 'pinkasV2Prefs';
-let PREF = {mode:'class', type:'all'};
+let PREF = {mode:'class', type:'all', by:'doors'};
 try{ Object.assign(PREF, JSON.parse(localStorage.getItem(PREF_KEY)||'{}')); }catch(e){}
 function savePref(){ try{ localStorage.setItem(PREF_KEY, JSON.stringify(PREF)); }catch(e){} }
 
@@ -273,6 +274,8 @@ function render(){
   if(parts[0]==='door' && doorOf(+parts[1])) renderDoor(+parts[1], q.get('t')||'');
   else if(parts[0]==='p' && byId(parts[1])) renderPractice(byId(parts[1]));
   else if(parts[0]==='search') renderSearch(q.get('q')||'');
+  else if(parts[0]==='topic' && topicOf(parts[1])) renderTopic(parts[1]);
+  else if(parts[0]==='boger' && /^[1-6]$/.test(parts[1]||'')) renderBoger(+parts[1], q.get('i')||'');
   else if(parts[0]==='negishut') renderA11y();
   else renderCover();
   placeHiddenWings(parts[0]||'cover');
@@ -338,10 +341,10 @@ function renderCover(){
     ${PREF.mode==='student'?`<p class="hint">התיוג "לתלמיד אחד" עוד חלקי: מופיעים כל התרגולים שאינם לצוות, ומה שסומן כפרטני ראשון.</p>`:''}
     <section class="sect" aria-labelledby="h-doors">
       <h2 id="h-doors">מה צריך עכשיו?</h2>
-      <div class="doors">
-        ${D.doors.map(d=>{ const n=vis.filter(p=>p.door===d.n).length;
-          return `<a class="door${n?'':' empty'}" href="#/door/${d.n}"><span class="bar" style="background:${d.color}"></span><span class="t">${esc(d.title)}</span><span class="n">${n} תרגולים</span></a>`; }).join('')}
+      <div class="seg" role="group" aria-label="איך מחפשים">
+        ${[['doors','לפי צורך'],['topics','לפי נושא'],['boger','בוגר סביון']].map(b=>`<button type="button" data-by="${b[0]}" aria-pressed="${PREF.by===b[0]}">${b[1]}</button>`).join('')}
       </div>
+      ${coverBrowse(vis)}
     </section>
     <section class="sect" aria-labelledby="h-type">
       <h2 id="h-type">באיזו צורה?</h2>
@@ -363,6 +366,69 @@ function renderCover(){
     </div>
     <footer class="foot"><a href="#/negishut">הצהרת נגישות</a></footer>
   </main>`;
+}
+
+/* ---------- שלוש דרכים לחפש: לפי צורך (דלתות), לפי נושא, לפי בוגר סביון ---------- */
+function coverBrowse(vis){
+  if(PREF.by==='topics'){
+    const list = D.topics.map(t=>({t, n:vis.filter(p=>p.topic===t.id).length})).filter(x=>x.n)
+      .sort((a,b)=>a.t.title.localeCompare(b.t.title,'he'));
+    return `<div class="chips">${list.map(x=>`<a class="chip" href="#/topic/${esc(x.t.id)}"><span class="dot" style="background:${doorOf(x.t.door).color};width:12px;height:6px;border-radius:3px"></span>${esc(x.t.title)} <span class="c">${x.n}</span></a>`).join('')}</div>`;
+  }
+  if(PREF.by==='boger'){
+    if(!BOGER) return `<p class="hint">טוען את חלקי בוגר סביון...</p>`;
+    if(!Object.keys(BOGER.topics).length) return `<p class="hint">השיוך של התרגולים לששת החלקים של בוגר סביון נמצא עכשיו באישור של צוות מוביל השפה הקשובה, ויופיע כאן כשיאושר.</p>`;
+    return `<div class="doors">${BOGER.cats.map(c=>{ const n=vis.filter(p=>bogerOf(p).some(k=>k[0]===String(c.n))).length;
+      return `<a class="door${n?'':' empty'}" href="#/boger/${c.n}"><span class="bar" style="background:${c.color}"></span><span class="t">${esc(c.title)}</span><span class="n">${n} תרגולים</span></a>`; }).join('')}</div>`;
+  }
+  return `<div class="doors">
+        ${D.doors.map(d=>{ const n=vis.filter(p=>p.door===d.n).length;
+          return `<a class="door${n?'':' empty'}" href="#/door/${d.n}"><span class="bar" style="background:${d.color}"></span><span class="t">${esc(d.title)}</span><span class="n">${n} תרגולים</span></a>`; }).join('')}
+      </div>`;
+}
+/* השיוך לבוגר סביון יושב ברמת הנושא, ורק מה שאושר על ידי שחף והצוות המוביל */
+let BOGER = null;
+function bogerOf(p){ return (BOGER && BOGER.topics[p.topic]) || p.boger || []; }
+function bogerCat(n){ return BOGER && BOGER.cats.find(c=>c.n===n); }
+function bogerItem(k){ const [a,b]=k.split('-').map(Number), c=bogerCat(a); return c ? {cat:c, text:c.items[b-1]} : null; }
+function renderTopic(tid){
+  const t = topicOf(tid);
+  const list = sortForMode(D.practices.filter(p=>p.topic===tid && visible(p)));
+  app.innerHTML = `<main class="wrap" id="main">
+    ${homeWing()}${backLink('#/','חזרה לכריכה')}
+    <div class="dhead"><span class="bar" style="background:${doorOf(t.door).color}"></span><h1>${esc(t.title)}</h1>
+      <div class="m">${esc(doorOf(t.door).title)} · ${list.length} תרגולים</div></div>
+    ${filterLine()}
+    ${t.description?`<p class="desc">${esc(t.description)}</p>`:''}
+    ${list.length?`<div class="grid">${list.map(cardHtml).join('')}</div>`:`<div class="empty-note">אין כאן תרגולים מהסוג שנבחר.</div>`}
+  </main>`;
+}
+function renderBoger(n, item){
+  const c = bogerCat(n);
+  if(!c){ app.innerHTML = `<main class="wrap" id="main">${homeWing()}${backLink('#/','חזרה לכריכה')}<p class="hint">רגע, טוען...</p></main>`; return; }
+  const inPart = D.practices.filter(p=>visible(p) && bogerOf(p).some(k=>k[0]===String(n)));
+  const list = sortForMode(item ? inPart.filter(p=>bogerOf(p).includes(item)) : inPart);
+  const counts = c.items.map((txt,i)=>({k:n+'-'+(i+1), txt, n:inPart.filter(p=>bogerOf(p).includes(n+'-'+(i+1))).length}));
+  app.innerHTML = `<main class="wrap" id="main">
+    ${homeWing()}${backLink('#/','חזרה לכריכה')}
+    <div class="dhead"><span class="bar" style="background:${c.color}"></span><h1>${esc(c.title)}</h1>
+      <div class="m">חלק ${n} בבוגר סביון · ${inPart.length} תרגולים</div></div>
+    ${filterLine()}
+    <nav class="chips scroll" aria-label="היגדים">
+      <a class="chip" href="#/boger/${n}" aria-current="${!item}">הכול <span class="c">${inPart.length}</span></a>
+      ${counts.filter(x=>x.n).map(x=>`<a class="chip" href="#/boger/${n}?i=${x.k}" aria-current="${item===x.k}">${esc(x.txt)} <span class="c">${x.n}</span></a>`).join('')}
+    </nav>
+    ${list.length?`<div class="grid">${list.map(cardHtml).join('')}</div>`:`<div class="empty-note">אין כאן תרגולים מהסוג שנבחר.</div>`}
+  </main>`;
+  const on = app.querySelector('.chips.scroll [aria-current="true"]');
+  if(on && item){ const box=on.parentElement; box.scrollLeft += on.getBoundingClientRect().left - box.getBoundingClientRect().left - 16; }
+}
+function fetchBoger(){
+  window.__pinkasBoger = function(d){ BOGER = d && d.cats ? d : {cats:[], topics:{}}; render(); };
+  const s = document.createElement('script');
+  s.src = ADD_URL + '?api=boger&callback=__pinkasBoger';
+  s.onerror = function(){ BOGER = {cats:[], topics:{}}; render(); };
+  document.body.appendChild(s);
 }
 
 /* ---------- דלת ---------- */
@@ -456,7 +522,9 @@ function tagsHtml(p){
   if(p.layer && p.type!=='activity') t.push(`<span class="tag">${esc(p.layer)}</span>`);
   const aud = (p.audience||[]).map(a=>({class:'לכיתה',student:'לתלמיד אחד',staff:'לצוות'}[a])).filter(Boolean);
   if(aud.length && !(aud.length===1 && p.layer==='צוות')) t.push(`<span class="tag">${aud.join(' / ')}</span>`);
-  return `<div class="tags">${t.join('')}</div>`;
+  const bg = bogerOf(p).map(bogerItem).filter(Boolean);
+  const bgTags = bg.length ? `<div class="tags" aria-label="בוגר סביון">${bg.map(x=>`<a class="tag" href="#/boger/${x.cat.n}?i=${x.cat.n}-${x.cat.items.indexOf(x.text)+1}"><span class="dot" style="background:${x.cat.color}"></span>${esc(x.text)}</a>`).join('')}</div>` : '';
+  return `<div class="tags">${t.join('')}</div>${bgTags}`;
 }
 function noteBox(p){ return p.note?`<div class="box warn"><h2>שימו לב</h2><p>${esc(p.note)}</p></div>`:''; }
 function whyBox(p){ const t=topicOf(p.topic), w=p.why||(t&&t.why); return w?`<div class="box"><h2>למה זה עובד</h2><p>${esc(w)}</p></div>`:''; }
@@ -630,6 +698,7 @@ document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElemen
 /* ---------- אירועים ---------- */
 app.addEventListener('click', e=>{
   const m = e.target.closest('[data-mode]'); if(m){ PREF.mode=m.dataset.mode; savePref(); render(); return; }
+  const by = e.target.closest('[data-by]'); if(by){ PREF.by=by.dataset.by; savePref(); render(); return; }
   const t = e.target.closest('[data-type]'); if(t){ PREF.type=t.dataset.type; savePref(); render(); return; }
   const dbtn = e.target.closest('[data-doc]');
   if(dbtn){ const p=byId(app.querySelector('main').dataset.id); const d=p.docs[+dbtn.dataset.doc];
@@ -685,7 +754,8 @@ function applyAdds(rows){
     if(!a || !a.id || byId(a.id)) return;
     const door = Number(a.door) || wDoor[a.world];
     if(!door) return;
-    let t = topicOf(a.topicId);
+    /* נושא שהצוות פתח בשם של נושא קיים מצטרף אליו, ולא מופיע פעמיים */
+    let t = topicOf(a.topicId) || D.topics.find(x=>a.topicTitle && x.title===a.topicTitle);
     if(!t){
       t = {id:a.topicId || ('staff_d'+door), title:a.topicTitle || 'מהצוות', door:door, description:''};
       D.topics.push(t);
@@ -713,6 +783,7 @@ function fetchAdds(){
 
 render();
 fetchAdds();
+fetchBoger();
 </script>
 </body>
 </html>
