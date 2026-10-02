@@ -120,6 +120,7 @@ h1[tabindex="-1"]:focus{outline:none}
 .dhead .bar{width:40px;height:8px;border-radius:4px}
 .dhead h1{font-weight:800;font-size:28px;line-height:1.15}
 .dhead .m{font-size:15px;color:var(--ink2)}
+.chip.soon{opacity:.6;cursor:default;border-style:dashed}
 .warnTag{align-self:flex-start;margin:0 12px 10px;font-size:13px;font-weight:700;color:#8A4B00;background:#FFF1D6;border-radius:8px;padding:2px 8px}
 .card.text .warnTag{margin:6px 0 0}
 .mats{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -244,7 +245,7 @@ a.tag{color:var(--ink);min-height:44px;background:#fff;border:1px solid var(--li
 const D = window.PINKAS;
 const TYPES = [
   {id:'page', label:'דף להקרנה'},
-  {id:'audio', label:'הקלטה'},
+  {id:'audio', label:'הקלטה לשמיעה'},
   {id:'write', label:'תרגול כתוב'},
   {id:'activity', label:'פעילות'},
   {id:'deck', label:'מצגת'},
@@ -399,7 +400,9 @@ function renderCover(){
       <h2 id="h-type">באיזו צורה?</h2>
       <div class="chips">
         <button type="button" class="chip" data-type="all" aria-pressed="${PREF.type==='all'}">הכול</button>
-        ${TYPES.filter(t=>typeCounts[t.id]).map(t=>`<button type="button" class="chip" data-type="${t.id}" aria-pressed="${PREF.type===t.id}">${t.label} <span class="c">${typeCounts[t.id]}</span></button>`).join('')}
+        ${TYPES.filter(t=>typeCounts[t.id] || t.id==='audio').map(t=>typeCounts[t.id]
+          ? `<button type="button" class="chip" data-type="${t.id}" aria-pressed="${PREF.type===t.id}">${t.label} <span class="c">${typeCounts[t.id]}</span></button>`
+          : `<span class="chip soon" aria-disabled="true">${t.label} <span class="c">בקרוב</span></span>`).join('')}
       </div>
     </section>
     <section class="sect" aria-labelledby="h-today">
