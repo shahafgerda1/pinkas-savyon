@@ -76,6 +76,10 @@ body.playing .hiderow{visibility:hidden}
 .mh .c{font-size:14px;color:var(--ink2)}
 .mh li.none{background:transparent;border:1px dashed var(--line);color:var(--ink2)}
 .mh li.none .tt{font-weight:400}
+.mh .mo{font-size:13px;color:#8A6408;font-weight:600}
+.starthere{display:flex;flex-direction:column;gap:8px}
+.starthere .k{font-size:13px;font-weight:700;color:#8A6408}
+.stepnote{background:#FFFBF2;border-inline-start:4px solid #D9A51C;border-radius:12px;padding:10px 14px;white-space:pre-line}
 .sub2{font-size:18px;margin-top:6px}
 .season{background:var(--card);border-radius:var(--r);padding:14px 16px;border-inline-start:5px solid #D9A51C}
 .season h2{font-size:18px}
@@ -710,7 +714,24 @@ const SEASONS = [
 ];
 /* מספור רץ לכל שלבי המהלך, כדי שלכל שלב תהיה כתובת */
 const STEPS = []; MAHALACH.forEach(d=>d.steps.forEach(st=>{ st.i = STEPS.length + 1; st.part = d.part; st.domain = d.domain; STEPS.push(st); }));
-function stepPractices(st){ return D.practices.filter(p=>st.topics.includes(p.topic) || st.topics.includes(topicAlias(p.topic))); }
+/* מה שחן בחרה לכל שלב, מכלי התוספות (?api=mahalach, 4.10.2026). שלב שהיא בחרה בו
+   מציג רק את הבחירה שלה ובסדר שלה; שלב שלא נגעה בו נשאר עם ההצעה לפי נושא. */
+let MH_LIVE = {};
+function stepLive(st){ return MH_LIVE[st.i] || null; }
+function stepChosen(st){ const l = stepLive(st); return !!(l && l.practices && l.practices.length); }
+function stepPractices(st){
+  if(stepChosen(st)) return stepLive(st).practices.map(byId).filter(Boolean);
+  return D.practices.filter(p=>st.topics.includes(p.topic) || st.topics.includes(topicAlias(p.topic)));
+}
+const MONTH_NAME = {9:'ספטמבר',10:'אוקטובר',11:'נובמבר',12:'דצמבר',1:'ינואר',2:'פברואר',3:'מרץ',4:'אפריל',5:'מאי',6:'יוני',7:'יולי',8:'אוגוסט'};
+function stepMonths(st){ const l = stepLive(st); return (l && l.months) || []; }
+function fetchMahalach(){
+  window.__pinkasMahalach = function(d){ MH_LIVE = (d && d.steps) || {}; render(); };
+  const s = document.createElement('script');
+  s.src = ADD_URL + '?api=mahalach&callback=__pinkasMahalach';
+  s.onerror = function(){};  /* בלי רשת: השלבים נשארים עם ההצעה לפי נושא */
+  document.body.appendChild(s);
+}
 /* נושא שהצוות פתח בשם של נושא קיים נחשב כמותו */
 function topicAlias(id){ const t=topicOf(id); if(!t) return id; const same=D.topics.find(x=>x.title===t.title && x.id!==id); return same ? same.id : id; }
 function mahalachHtml(n){
@@ -718,20 +739,29 @@ function mahalachHtml(n){
   return `<section class="sect mahalach" aria-labelledby="h-mh"><h2 id="h-mh">${(()=>{ const bt=(bogerCat(n)||{}).title||d.domain; return `המהלך השנתי: ${esc(bt)}${bt!==d.domain?` <span class="sel">(${esc(d.domain)})</span>`:''}`; })()}</h2>
     <p class="hint"><b>${esc(d.goal)}.</b> ${esc(d.skills)}</p>
     <ol class="mh">${d.steps.map(st=>{ const k=stepPractices(st).filter(p=>visible(p)).length;
-      return k ? `<li><a href="#/step/${st.i}"><span class="num">${st.i}</span><span class="tt">${esc(st.t)}</span><span class="c">${k}</span></a></li>`
+      const mo = stepMonths(st).map(m=>MONTH_NAME[m]).join(', ');
+      return k ? `<li><a href="#/step/${st.i}"><span class="num">${st.i}</span><span class="tt">${esc(st.t)}${mo?`<br><span class="mo">${esc(mo)}</span>`:''}</span><span class="c">${k}</span></a></li>`
                : `<li class="none"><span class="num">${st.i}</span><span class="tt">${esc(st.t)}</span><span class="c">עוד אין תרגולים</span></li>`; }).join('')}</ol>
   </section>`;
 }
 function renderStep(i){
   const st = STEPS[i-1]; const c = bogerCat(st.part);
-  const list = sortForMode(stepPractices(st).filter(p=>visible(p)));
+  const live = stepLive(st), chosen = stepChosen(st);
+  /* בחירה של חן נשארת בסדר שלה; ההצעה לפי נושא ממוינת כמו בכל מקום */
+  let list = stepPractices(st).filter(p=>visible(p));
+  if(!chosen) list = sortForMode(list);
+  const starter = chosen && live.starter ? list.find(p=>p.id===live.starter) : null;
+  const rest = starter ? list.filter(p=>p!==starter) : list;
+  const mo = stepMonths(st).map(m=>MONTH_NAME[m]).join(', ');
   const prev = STEPS[i-2], next = STEPS[i];
   app.innerHTML = `<main class="wrap" id="main">
     ${homeWing()}${backLink('#/boger/'+st.part, c ? c.title : 'בוגר סביון')}
     <div class="dhead"><span class="bar" style="background:${c?c.color:'var(--brand)'}"></span><h1>${esc(st.t)}</h1>
-      <div class="m">המהלך השנתי · ${esc(st.domain)} · שלב ${i} מתוך ${STEPS.length} · ${list.length} תרגולים</div></div>
+      <div class="m">המהלך השנתי · ${esc(st.domain)} · שלב ${i} מתוך ${STEPS.length}${mo?` · ${esc(mo)}`:''} · ${list.length} תרגולים</div></div>
+    ${live && live.note ? `<div class="stepnote">${esc(live.note)}</div>` : ''}
     ${filterLine()}
-    ${list.length?`<div class="grid">${list.map(cardHtml).join('')}</div>`:`<div class="empty-note">עוד אין בפנקס תרגולים לשלב הזה. אפשר להוסיף דרך "הוספת תרגול".</div>`}
+    ${starter ? `<section class="starthere" aria-label="מתחילים כאן"><span class="k">מתחילים כאן</span><div class="grid">${cardHtml(starter)}</div></section>` : ''}
+    ${rest.length ? `${starter?'<span class="hint">ועוד בשלב הזה</span>':''}<div class="grid">${rest.map(cardHtml).join('')}</div>` : (starter ? '' : `<div class="empty-note">${live && live.missing ? 'צוות השפה הקשובה מחפש תרגול מתאים לשלב הזה.' : 'עוד אין בפנקס תרגולים לשלב הזה.'} אפשר להוסיף דרך "הוספת תרגול".</div>`)}
     <nav class="row stepnav" aria-label="שלבי המהלך">
       ${prev?`<a class="btn ghost" href="#/step/${prev.i}">→ ${esc(prev.t)}</a>`:''}
       ${next?`<a class="btn ghost" href="#/step/${next.i}">${esc(next.t)} ←</a>`:''}
@@ -739,7 +769,12 @@ function renderStep(i){
   </main>`;
 }
 function seasonHtml(){
-  const m = new Date().getMonth() + 1, se = SEASONS.find(x=>x.months.includes(m));
+  const m = new Date().getMonth() + 1;
+  /* כשחן כבר שיבצה חודשים, הכריכה מציגה את שלבי החודש הנוכחי מהבחירה שלה */
+  const now = STEPS.filter(st=>stepMonths(st).includes(m) && stepPractices(st).some(p=>visible(p)));
+  if(now.length) return `<section class="season2" aria-labelledby="h-season"><span class="k">עכשיו במהלך השנתי</span><h2 id="h-season">${esc(MONTH_NAME[m])}</h2>
+    <div class="chips">${now.map(st=>`<a class="chip" href="#/step/${st.i}">${esc(st.t)}</a>`).join('')}</div></section>`;
+  const se = SEASONS.find(x=>x.months.includes(m));
   if(!se) return '';
   return `<section class="season2" aria-labelledby="h-season"><span class="k">עכשיו במהלך השנתי</span><h2 id="h-season">${esc(se.title)}</h2>
     <div class="chips">${se.items.map(it=>{ const t = it.topics[0]; return `<a class="chip" href="#/topic/${esc(t)}">${esc(it.t)}</a>`; }).join('')}</div></section>`;
@@ -1284,6 +1319,7 @@ function fetchAdds(){
 render();
 fetchAdds();
 fetchBoger();
+fetchMahalach();
 fetchMinutes();
 track('visit', null);
 flushUse();
