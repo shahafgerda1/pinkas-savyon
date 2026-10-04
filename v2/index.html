@@ -10,6 +10,9 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-180.png">
 <meta name="theme-color" content="#54078F">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="פנקס התרגולים">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Rubik:wght@700;800&display=swap">
@@ -202,6 +205,19 @@ a.tag{color:var(--ink);min-height:44px;background:#fff;border:1px solid var(--li
 .show .ssteps{text-align:right;margin:0;padding-inline-start:1.4em;font-size:clamp(18px,2.4vw,32px);line-height:1.5;display:flex;flex-direction:column;gap:1.2vh}
 .show .open{font-size:15px;font-weight:700}
 
+/* התרגולים שלי וסימון "עשיתי" (4.10.2026) */
+.mine-acts{display:flex;flex-direction:column;gap:10px;padding:14px 16px;background:var(--card);border-radius:var(--r)}
+.mine-acts .row>.btn{flex:1 1 140px}
+.mine-acts .st{font-size:15px;color:var(--ink2);margin:0}
+.btn.ghost[aria-pressed="true"]{background:var(--brand);color:#fff}
+.markTag{position:absolute;top:8px;left:8px;background:var(--brand);color:#fff;font-size:12px;font-weight:700;padding:3px 8px;border-radius:10px}
+.card.text{position:relative}
+.card.text .markTag{top:10px;left:10px}
+.who{font-size:14px;color:var(--ink2);display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px}
+.who button{min-height:44px;border:0;background:none;color:var(--brand);font-weight:700;padding:0 4px;text-decoration:underline}
+.foot{display:flex;flex-direction:column;gap:2px}
+.foot .install{border:0;background:none;padding:0;color:var(--brand);font-weight:700;min-height:44px;text-align:start}
+
 @media (min-width:720px){
   .cover-hero{flex-direction:row;align-items:center;justify-content:space-between;padding:22px 26px}
   .cover-hero .search{flex:0 1 440px}
@@ -272,9 +288,22 @@ const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&
 
 /* ---------- העדפות קטנות של הצופה (רק נוחות, לא נתונים) ---------- */
 const PREF_KEY = 'pinkasV2Prefs';
-let PREF = {type:'all', by:'boger'};
+let PREF = {type:'all', by:'boger', time:'all'};
 try{ Object.assign(PREF, JSON.parse(localStorage.getItem(PREF_KEY)||'{}')); }catch(e){}
 if(['me','boger','topics'].indexOf(PREF.by)<0) PREF.by='boger';
+/* כמה זמן יש (4.10.2026): הסינון לפי הגבול העליון של הטווח, "10–15" נחשב 15 */
+const TIMES = [{id:'all', label:'כל זמן'}, {id:'5', label:'עד 5 דק׳'}, {id:'10', label:'עד 10 דק׳'}, {id:'20', label:'עד 20 דק׳'}];
+if(!TIMES.some(t=>t.id===PREF.time)) PREF.time='all';
+function minsOf(p){
+  const n = String(p.minutes||'').match(/\d+/g);
+  if(n) return Math.max(...n.map(Number));
+  return p.staffMin || null;
+}
+function minsLabel(p){
+  if(p.minutes) return p.minutes+' דק׳';
+  return p.staffMin ? 'כ-'+p.staffMin+' דק׳' : '';
+}
+function fitsTime(p, time){ time = time||PREF.time; if(time==='all') return true; const m=minsOf(p); return m!=null && m<=+time; }
 /* "בשבילי" הוא תרגולי הצוות; בשתי הדרכים האחרות מוצג כל מה שאינו לצוות בלבד */
 function curMode(){ return PREF.by==='me' ? 'me' : 'class'; }
 function savePref(){ try{ localStorage.setItem(PREF_KEY, JSON.stringify(PREF)); }catch(e){} }
@@ -290,7 +319,7 @@ function inMode(p, mode){
 }
 /* תרגול רגיש (עדן, 2.10.2026): יש לו "שימו לב" או סימון. לא בהגרלה, וההקרנה לא עוברת אליו בחיצים */
 function isSensitive(p){ return !!(p.note || p.sensitive); }
-function visible(p, type){ type = type||PREF.type; return inMode(p) && (type==='all' || p.type===type); }
+function visible(p, type){ type = type||PREF.type; return inMode(p) && (type==='all' || p.type===type) && fitsTime(p); }
 /* סדרה לבית אחד ולפי דרישה (מסע הקברניט, צעירים): נשארת בנושא, אבל בסוף הרשימה ולא בכריכה */
 function sortForMode(list){
   list = list.slice().sort((a,b)=>(a.onDemand?1:0)-(b.onDemand?1:0));
@@ -328,6 +357,7 @@ function render(){
   else if(parts[0]==='step' && STEPS[(+parts[1]||0)-1]) renderStep(+parts[1]);
   else if(parts[0]==='boger' && /^[1-6]$/.test(parts[1]||'')) renderBoger(+parts[1], q.get('i')||'');
   else if(parts[0]==='negishut') renderA11y();
+  else if(parts[0]==='mine') renderMine();
   else renderCover();
   placeHiddenWings(parts[0]||'cover');
   if(keepQ){ const i=document.getElementById('q'); if(i){ i.value=keepQ.v; i.focus(); try{i.setSelectionRange(keepQ.s,keepQ.s);}catch(e){} } }
@@ -358,11 +388,11 @@ function cardHtml(p){
   if(src){
     const badge = p.type==='deck' ? 'מצגת' : (p.docs&&p.docs.length>1 ? p.docs.length+' דפים' : '');
     return `<a class="card" href="#/p/${esc(p.id)}">
-      <span class="ph"><img loading="lazy" decoding="async" src="${esc(src)}" alt="" onerror="this.style.visibility='hidden'">${badge?`<span class="badge">${badge}</span>`:''}</span>
+      <span class="ph"><img loading="lazy" decoding="async" src="${esc(src)}" alt="" onerror="this.style.visibility='hidden'">${badge?`<span class="badge">${badge}</span>`:''}${markTag(p)}</span>
       <span class="tt">${esc(p.title)}</span>${p.note?`<span class="warnTag">שימו לב</span>`:''}</a>`;
   }
-  return `<a class="card text" href="#/p/${esc(p.id)}">
-    <span class="top"><span class="dot" style="background:${door.color}"></span>${esc(TYPE_LABEL[p.type])}${p.minutes?` · ${esc(p.minutes)} דק׳`:''}</span>
+  return `<a class="card text" href="#/p/${esc(p.id)}">${markTag(p)}
+    <span class="top"><span class="dot" style="background:${door.color}"></span>${esc(TYPE_LABEL[p.type])}${minsLabel(p)?` · ${esc(minsLabel(p))}`:''}</span>
     <span class="tt">${esc(p.title)}</span>
     <span class="w">${esc(p.what)}</span>
     ${houseLabel(p)?`<span class="lay">${esc(houseLabel(p))}</span>`:''}${p.note?`<span class="warnTag">שימו לב</span>`:''}</a>`;
@@ -370,9 +400,11 @@ function cardHtml(p){
 function filterLine(){
   const bits = [];
   if(PREF.type!=='all') bits.push('רק '+TYPE_LABEL[PREF.type]);
+  if(PREF.time!=='all') bits.push('עד '+PREF.time+' דק׳');
   if(PREF.by==='me') bits.push('בשבילי');
   if(!bits.length) return '';
-  return `<div class="filt"><span>מוצג: ${esc(bits.join(' · '))}</span><button type="button" data-act="clear">להציג הכול</button></div>`;
+  const unk = PREF.time!=='all' ? ' (תרגול שזמנו לא ידוע אינו מוצג)' : '';
+  return `<div class="filt"><span>מוצג: ${esc(bits.join(' · '))}${unk}</span><button type="button" data-act="clear">להציג הכול</button></div>`;
 }
 
 /* ---------- כריכה ---------- */
@@ -407,6 +439,14 @@ function renderCover(){
           : `<span class="chip soon" aria-disabled="true">${t.label} <span class="c">בקרוב</span></span>`).join('')}
       </div>
     </section>
+    <section class="sect" aria-labelledby="h-time">
+      <h2 id="h-time">כמה זמן יש?</h2>
+      <div class="chips">
+        ${TIMES.map(t=>{ const n = t.id==='all' ? '' : inM.filter(p=>(PREF.type==='all'||p.type===PREF.type) && fitsTime(p,t.id)).length;
+          return `<button type="button" class="chip" data-time="${t.id}" aria-pressed="${PREF.time===t.id}">${t.label}${n!==''?` <span class="c">${n}</span>`:''}</button>`; }).join('')}
+      </div>
+    </section>
+    ${mineCoverHtml()}
     <section class="sect" aria-labelledby="h-today">
       <h2 id="h-today">התרגול של היום</h2>
       <div class="duo">
@@ -419,7 +459,7 @@ function renderCover(){
         </div>
       </div>
     </section>
-    <footer class="foot"><a href="#/negishut">הצהרת נגישות</a></footer>
+    <footer class="foot">${whoHtml()}${installHtml()}<a href="#/negishut">הצהרת נגישות</a></footer>
   </main>`;
 }
 
@@ -751,7 +791,7 @@ function renderPractice(p){
   } else {
     /* פעילות ותרגול כתוב: אותה תבנית, וכל שדה מופיע רק כשיש בו תוכן */
     const F = p.full || {};
-    const facts = p.type==='activity' ? [['משתתפים',p.players],['זמן',p.minutes?p.minutes+' דק׳':''],['גיל',p.layer]].filter(f=>f[1]) : [];
+    const facts = p.type==='activity' ? [['משתתפים',p.players],['זמן',p.minutes?p.minutes+' דק׳':(p.staffMin?'כ-'+p.staffMin+' דק׳, לפי הצוות':'')],['גיל',p.layer]].filter(f=>f[1]) : [];
     body = `<div class="ptitle"><h1>${esc(p.title)}</h1>${tagsHtml(p)}${p.what?`<p class="lead">${esc(p.what)}</p>`:''}</div>
       ${noteBox(p)}
       ${facts.length?`<div class="facts" style="grid-template-columns:repeat(${facts.length},minmax(0,1fr))">${facts.map(f=>`<div class="fact"><span class="k">${f[0]}</span><span class="v">${esc(f[1])}</span></div>`).join('')}</div>`:''}
@@ -760,8 +800,9 @@ function renderPractice(p){
       ${whyBox(p)}
       ${p.noShow?`<p class="hint">תרגול פרטני, מול תלמיד אחד. בלי הקרנה.</p>`:`<button type="button" class="btn" data-act="show">${p.type==='activity'?'הקרנת ההוראות על הלוח':'הקרנה על הלוח'}</button>`}`;
   }
-  app.innerHTML = `<main class="wrap narrow" id="main" data-id="${esc(p.id)}">${head}${body}${bylineHtml(p)}${moreHtml(p)}</main>`;
+  app.innerHTML = `<main class="wrap narrow" id="main" data-id="${esc(p.id)}">${head}${body}${mineActsHtml(p)}${bylineHtml(p)}${moreHtml(p)}</main>`;
   if(p.audio) wireAudio(p);
+  track('open', p);
 }
 function fullHtml(p){
   const F = p.full || {}, out = [];
@@ -870,6 +911,7 @@ function exitShow(){
 function enterShow(id){
   const el = document.documentElement;
   if(el.requestFullscreen && !document.fullscreenElement) el.requestFullscreen().catch(()=>{});
+  track('show', byId(id));
   go('#/show/'+id);
 }
 /* יציאה ממסך מלא (Esc של הדפדפן) מוציאה גם ממצב ההקרנה */
@@ -879,6 +921,7 @@ document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElemen
 app.addEventListener('click', e=>{
   const by = e.target.closest('[data-by]'); if(by){ PREF.by=by.dataset.by; savePref(); render(); return; }
   const t = e.target.closest('[data-type]'); if(t){ PREF.type=t.dataset.type; savePref(); render(); return; }
+  const tm = e.target.closest('[data-time]'); if(tm){ PREF.time=tm.dataset.time; savePref(); render(); return; }
   const dbtn = e.target.closest('[data-doc]');
   if(dbtn){ const p=byId(app.querySelector('main').dataset.id); const d=p.docs[+dbtn.dataset.doc];
     const hero=document.getElementById('hero'); if(hero&&d.img) hero.src=d.img;
@@ -886,7 +929,12 @@ app.addEventListener('click', e=>{
   const a = e.target.closest('[data-act]'); if(!a) return;
   const act = a.dataset.act;
   if(act==='surprise'){ e.preventDefault(); surprise(); }
-  else if(act==='clear'){ PREF.type='all'; PREF.by='boger'; savePref(); render(); }
+  else if(act==='clear'){ PREF.type='all'; PREF.by='boger'; PREF.time='all'; savePref(); render(); }
+  else if(act==='save'){ toggleSave(app.querySelector('main').dataset.id); }
+  else if(act==='did'){ const box=document.getElementById('didAsk'); if(box){ box.hidden=false; const f=box.querySelector('button'); if(f) f.focus(); } }
+  else if(act==='didMin'){ markDid(app.querySelector('main').dataset.id, +a.dataset.m||0); }
+  else if(act==='forget'){ forgetUser(); }
+  else if(act==='install'){ doInstall(); }
   else if(act==='show'){ const id=app.querySelector('main').dataset.id; if(!id) return;
     /* בטלפון אין תצוגת PDF בתוך הדף: המצגת נפתחת בלשונית משלה */
     const p=byId(id), f=p && p.type==='deck' && (p.file || (p.docs&&p.docs[0]&&p.docs[0].file));
@@ -924,6 +972,178 @@ document.addEventListener('keydown', e=>{
 document.getElementById('skip').addEventListener('click', e=>{
   e.preventDefault(); const m=document.getElementById('main'); if(m){ m.setAttribute('tabindex','-1'); m.focus(); }
 });
+
+/* ---------- התרגולים שלי (4.10.2026): שמירה וסימון "עשיתי", בדפדפן הזה ---------- */
+const MINE_KEY = 'pinkasV2Mine';
+let MINE = {saved:{}, used:{}};
+try{ Object.assign(MINE, JSON.parse(localStorage.getItem(MINE_KEY)||'{}')); }catch(e){}
+function saveMine(){ try{ localStorage.setItem(MINE_KEY, JSON.stringify(MINE)); }catch(e){} }
+function heDate(ts){ const d=new Date(ts); return d.getDate()+'.'+(d.getMonth()+1)+'.'+d.getFullYear(); }
+function markTag(p){
+  if(MINE.saved[p.id]) return `<span class="markTag" aria-label="שמור אצלי">★</span>`;
+  if(MINE.used[p.id]) return `<span class="markTag" aria-label="עשיתי">✓</span>`;
+  return '';
+}
+function mineActsHtml(p){
+  const s = !!MINE.saved[p.id], u = MINE.used[p.id];
+  return `<section class="mine-acts" aria-label="התרגולים שלי">
+    <div class="row">
+      <button type="button" class="btn ghost" data-act="save" aria-pressed="${s}">${s?'★ שמור בתרגולים שלי':'☆ לשמור בתרגולים שלי'}</button>
+      <button type="button" class="btn ghost" data-act="did">✓ עשיתי את זה</button>
+    </div>
+    <div id="didAsk" hidden><p class="st">כמה זמן זה לקח בפועל?</p>
+      <div class="chips">${[5,10,15,20,30].map(m=>`<button type="button" class="chip" data-act="didMin" data-m="${m}">${m} דק׳</button>`).join('')}<button type="button" class="chip" data-act="didMin" data-m="0">לא מדדתי</button></div></div>
+    ${u?`<p class="st" role="status">עשית את זה ${u.n===1?'פעם אחת':u.n+' פעמים'}, לאחרונה ב-${heDate(u.last)}.</p>`:''}
+  </section>`;
+}
+function toggleSave(id){
+  const p = byId(id); if(!p) return;
+  if(MINE.saved[id]) delete MINE.saved[id];
+  else { MINE.saved[id] = Date.now(); track('save', p); }
+  saveMine(); render();
+}
+function markDid(id, m){
+  const p = byId(id); if(!p) return;
+  const u = MINE.used[id] || {n:0, last:0};
+  MINE.used[id] = {n:u.n+1, last:Date.now()};
+  saveMine(); track('used', p, m, true); render();
+}
+function minePractices(){
+  const saved = Object.keys(MINE.saved).map(byId).filter(Boolean).sort((a,b)=>MINE.saved[b.id]-MINE.saved[a.id]);
+  const used = Object.keys(MINE.used).map(byId).filter(Boolean).sort((a,b)=>MINE.used[b.id].last-MINE.used[a.id].last);
+  return {saved, used};
+}
+function mineCoverHtml(){
+  const {saved, used} = minePractices();
+  if(!saved.length && !used.length) return '';
+  const pick = [...saved, ...used.filter(p=>!MINE.saved[p.id])].slice(0,4);
+  return `<section class="sect" aria-labelledby="h-mine">
+    <h2 id="h-mine">התרגולים שלי</h2>
+    <div class="grid">${pick.map(cardHtml).join('')}</div>
+    <a class="back" href="#/mine">לכל התרגולים שלי (${saved.length} שמורים · ${used.length} שעשיתי)</a>
+  </section>`;
+}
+function renderMine(){
+  const {saved, used} = minePractices();
+  app.innerHTML = `<main class="wrap" id="main">
+    ${homeWing()}${backLink('#/','חזרה לכריכה')}
+    <div class="dhead"><h1>התרגולים שלי</h1><div class="m">נשמר בדפדפן הזה. בטלפון ובמחשב יש רשימה נפרדת.</div></div>
+    <section class="sect" aria-labelledby="h-saved"><h2 id="h-saved">שמורים (${saved.length})</h2>
+      ${saved.length?`<div class="grid">${saved.map(cardHtml).join('')}</div>`:`<p class="hint">בכל תרגול יש כפתור "לשמור בתרגולים שלי".</p>`}</section>
+    <section class="sect" aria-labelledby="h-used"><h2 id="h-used">עשיתי (${used.length})</h2>
+      ${used.length?`<ul class="mh">${used.map(p=>{ const u=MINE.used[p.id];
+        return `<li><a href="#/p/${esc(p.id)}"><span class="tt">${esc(p.title)}</span><span class="c">${u.n>1?u.n+' פעמים · ':''}${heDate(u.last)}</span></a></li>`; }).join('')}</ul>`
+        :`<p class="hint">אחרי תרגול עם הכיתה אפשר לסמן "עשיתי את זה", וכאן תיבנה הרשימה.</p>`}</section>
+  </main>`;
+}
+
+/* ---------- מי משתמש/ת בפנקס (הכרעת שחף, 4.10.2026) ----------
+   קישור אישי (?u=...) שנשלח מלשונית "שימוש" במסך התוספות. הפנקס זוכר אותו בדפדפן,
+   ורושם כניסה, פתיחה, הקרנה, שמירה ו"עשיתי". האירועים נאספים בתור (שורד גם בלי רשת)
+   ונשלחים בצרורות לשרת התוספות. אין כאן שום מידע על תלמידים. */
+const USER_KEY = 'pinkasV2User', QUEUE_KEY = 'pinkasV2Queue', SEEN_KEY = 'pinkasV2Seen', DEV_KEY = 'pinkasV2Dev';
+let USER = {u:'', name:''};
+try{ Object.assign(USER, JSON.parse(localStorage.getItem(USER_KEY)||'{}')); }catch(e){}
+(function(){
+  const m = location.search.match(/[?&]u=([A-Za-z0-9-]{20,60})/);
+  if(!m) return;
+  if(USER.u!==m[1]) USER = {u:m[1], name:''};
+  try{ localStorage.setItem(USER_KEY, JSON.stringify(USER)); }catch(e){}
+  /* הקישור האישי לא נשאר בשורת הכתובת, כדי שלא יועתק הלאה בטעות */
+  try{ history.replaceState(null, '', location.pathname + location.hash); }catch(e){}
+})();
+function devId(){
+  let d = '';
+  try{ d = localStorage.getItem(DEV_KEY)||''; }catch(e){}
+  if(!/^[a-z0-9]{6,20}$/.test(d)){ d = Math.random().toString(36).slice(2,12).padEnd(8,'0'); try{ localStorage.setItem(DEV_KEY, d); }catch(e){} }
+  return d;
+}
+let QUEUE = [];
+try{ QUEUE = JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]'); if(!Array.isArray(QUEUE)) QUEUE=[]; }catch(e){ QUEUE=[]; }
+function saveQueue(){ try{ localStorage.setItem(QUEUE_KEY, JSON.stringify(QUEUE.slice(-300))); }catch(e){} }
+/* פתיחה והקרנה נרשמות פעם ביום לכל תרגול, כדי שרענון לא ייספר כשימוש */
+function seenToday(key){
+  let s = {};
+  try{ s = JSON.parse(localStorage.getItem(SEEN_KEY)||'{}'); }catch(e){}
+  if(s.day!==todayKey()) s = {day:todayKey(), k:{}};
+  if(s.k[key]) return true;
+  s.k[key] = 1;
+  try{ localStorage.setItem(SEEN_KEY, JSON.stringify(s)); }catch(e){}
+  return false;
+}
+function track(a, p, m, always){
+  if(!always && seenToday(a+'|'+(p?p.id:''))) return;
+  QUEUE.push({a, p:p?p.id:'', m:m||0, ts:Date.now()});
+  saveQueue();
+  clearTimeout(track.t); track.t = setTimeout(flushUse, 1500);
+}
+let FLUSHING = false;
+function flushUse(){
+  if(FLUSHING || !QUEUE.length || (navigator.onLine===false)) return;
+  FLUSHING = true;
+  const batch = QUEUE.slice(0, 25);
+  const s = document.createElement('script');
+  const done = () => { FLUSHING = false; s.remove(); };
+  window.__pinkasUse = function(r){
+    done();
+    if(!r || !r.ok) return;
+    QUEUE.splice(0, batch.length); saveQueue();
+    if(USER.u){
+      if(!r.known){ USER = {u:'', name:''}; }
+      else if(r.name && r.name!==USER.name){ USER.name = r.name; }
+      try{ localStorage.setItem(USER_KEY, JSON.stringify(USER)); }catch(e){}
+      const w = document.getElementById('who'); if(w) w.outerHTML = whoHtml();
+    }
+    if(QUEUE.length) setTimeout(flushUse, 500);
+  };
+  s.onerror = done;
+  s.src = ADD_URL + '?api=use&u=' + encodeURIComponent(USER.u||'') + '&dev=' + devId()
+        + '&ev=' + encodeURIComponent(JSON.stringify(batch)) + '&callback=__pinkasUse';
+  document.body.appendChild(s);
+}
+window.addEventListener('online', flushUse);
+function whoHtml(){
+  if(!USER.u) return '';
+  return `<div class="who" id="who"><span>הפנקס מזהה אותך${USER.name?' כ'+esc(USER.name):''} מהקישור האישי, וכך אנחנו יודעים באילו תרגולים משתמשים בבית הספר.</span><button type="button" data-act="forget">זה לא אני</button></div>`;
+}
+function forgetUser(){
+  USER = {u:'', name:''};
+  try{ localStorage.removeItem(USER_KEY); }catch(e){}
+  render();
+}
+
+/* זמן לפי הצוות: לתרגול בלי זמן במקור, החציון של מה שהמורים סימנו ב"עשיתי" */
+function fetchMinutes(){
+  window.__pinkasMin = function(d){
+    if(!d || typeof d!=='object') return;
+    let any = false;
+    D.practices.forEach(p=>{ if(!p.minutes && d[p.id]){ p.staffMin = +d[p.id]; any = true; } });
+    if(any) render();
+  };
+  const s = document.createElement('script');
+  s.src = ADD_URL + '?api=minutes&callback=__pinkasMin';
+  s.onerror = function(){};
+  document.body.appendChild(s);
+}
+
+/* ---------- התקנה בטלפון ועבודה בלי רשת (4.10.2026) ---------- */
+let INSTALL = null;
+window.addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); INSTALL = e; if(!parseHash().parts.length) render(); });
+function isStandalone(){ return matchMedia('(display-mode: standalone)').matches || navigator.standalone===true; }
+function installHtml(){
+  if(isStandalone()) return '';
+  if(INSTALL) return `<button type="button" class="install" data-act="install">הוספת הפנקס למסך הבית של הטלפון</button>`;
+  if(/iphone|ipad|ipod/i.test(navigator.userAgent)) return `<span>באייפון: כפתור השיתוף בספארי, ואז "הוספה למסך הבית". כך הפנקס נפתח גם בלי רשת.</span>`;
+  return '';
+}
+function doInstall(){
+  if(!INSTALL) return;
+  INSTALL.prompt();
+  INSTALL.userChoice.finally(()=>{ INSTALL = null; render(); });
+}
+if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost')){
+  window.addEventListener('load', ()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
 
 /* ---------- התוספות של צוות השפה הקשובה, לקריאה בלבד ---------- */
 function applyAdds(rows){
@@ -963,6 +1183,9 @@ function fetchAdds(){
 render();
 fetchAdds();
 fetchBoger();
+fetchMinutes();
+track('visit', null);
+flushUse();
 </script>
 </body>
 </html>

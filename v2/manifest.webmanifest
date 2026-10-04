@@ -1,0 +1,16 @@
+{
+  "name": "פנקס התרגולים · סביון",
+  "short_name": "פנקס התרגולים",
+  "description": "תרגולי קשב, רגש ונוכחות של בית ספר סביון",
+  "lang": "he",
+  "dir": "rtl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F6F3EA",
+  "theme_color": "#54078F",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
