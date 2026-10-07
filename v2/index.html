@@ -958,7 +958,14 @@ function renderPractice(p){
 function fullHtml(p){
   const F = p.full || {}, out = [];
   if(F.goal) out.push(`<p class="goal"><b>המטרה:</b> ${esc(F.goal)}</p>`);
-  if(F.prep) out.push(`<div class="box"><h2>מה להכין</h2><p>${esc(F.prep)}</p></div>`);
+  /* החומרים של הנושא נכנסים לדף התרגול עצמו, ולא רק לדף הנושא: מה שהתרגול מזכיר ב"מה להכין" עולה ראשון */
+  const t = topicOf(p.topic), mats = (p.materials && p.materials.length ? p.materials : (t && t.materials) || []);
+  const base = m => m.name.replace(/\s*\(.*\)\s*$/,'').trim();
+  const named = mats.filter(m=>F.prep && F.prep.includes(base(m)));
+  const ordered = named.concat(mats.filter(m=>!named.includes(m)));
+  const matsHtml = ordered.length ? `<div class="mats"><b>${F.prep?'לפתיחה:':'מהחומרים הסגולים:'}</b>${ordered.map(m=>`<a class="chip" href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.name)}</a>`).join('')}</div>` : '';
+  if(F.prep) out.push(`<div class="box"><h2>מה להכין</h2><p>${esc(F.prep)}</p>${matsHtml}</div>`);
+  else if(matsHtml) out.push(`<div class="box"><h2>החומרים של הנושא</h2>${matsHtml}</div>`);
   if(F.steps && F.steps.length) out.push(`<div class="box"><h2>${p.type==='activity'?'איך עושים':'שלב אחרי שלב'}</h2><ol class="steps">${F.steps.map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div>`);
   if(F.text) out.push(`<div class="box read"><h2>${p.type==='audio'?'רוצה להנחות בקול שלך?':'הטקסט להקראה'}</h2><p>${esc(F.text)}</p></div>`);
   if(F.questions) out.push(`<div class="box"><h2>שאלות לשיחה</h2><p>${esc(F.questions)}</p></div>`);
