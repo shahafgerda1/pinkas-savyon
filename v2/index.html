@@ -370,6 +370,8 @@ const ICON_PAUSE = '<svg width="40" height="40" viewBox="0 0 24 24" fill="curren
 
 const doorOf = n => D.doors.find(d=>d.n===n);
 const topicOf = id => D.topics.find(t=>t.id===id);
+/* תרגול שייך לנושא שלו, ויכול להופיע גם בנושאים נוספים (also), בלי לזוז מהבית שלו */
+const inTopic = (p, id) => p.topic===id || (p.also||[]).includes(id);
 const byId = id => D.practices.find(p=>p.id===id);
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -525,7 +527,7 @@ function renderCover(){
         ${imgSrc(today)?`<img src="${esc(imgSrc(today))}" alt="">`:''}
         <span class="t">${esc(today.title)}</span><span class="m">${esc(doorOf(today.door).title)} · ${esc(TYPE_LABEL[today.type])}${minsLabel(today)?' · '+esc(minsLabel(today)):''}</span></a>`:''}
     </header>
-    ${seasonHtml()}
+    ${weeklyHtml()}${seasonHtml()}
     <section class="sect" aria-labelledby="h-doors">
       <h2 id="h-doors">מה צריך עכשיו?</h2>
       <div>
@@ -574,7 +576,7 @@ function coverBrowse(vis){
                       : `<p class="hint">אין כרגע תרגולים לצוות מהסוג שנבחר.</p>`;
   }
   if(PREF.by==='topics'){
-    const list = D.topics.map(t=>({t, n:vis.filter(p=>p.topic===t.id).length})).filter(x=>x.n)
+    const list = D.topics.map(t=>({t, n:vis.filter(p=>inTopic(p,t.id)).length})).filter(x=>x.n)
       .sort((a,b)=>a.t.title.localeCompare(b.t.title,'he'));
     return `<div class="chips">${list.map(x=>`<a class="chip" href="#/topic/${esc(x.t.id)}"><span class="dot" style="background:${doorOf(x.t.door).color};width:12px;height:6px;border-radius:3px"></span>${esc(x.t.title)} <span class="c">${x.n}</span></a>`).join('')}</div>`;
   }
@@ -613,7 +615,7 @@ function bogerCat(n){ return BOGER && BOGER.cats.find(c=>c.n===n); }
 function bogerItem(k){ const [a,b]=k.split('-').map(Number), c=bogerCat(a); return c ? {cat:c, text:c.items[b-1]} : null; }
 function renderTopic(tid){
   const t = topicOf(tid);
-  const list = sortForMode(D.practices.filter(p=>p.topic===tid && visible(p)));
+  const list = sortForMode(D.practices.filter(p=>inTopic(p,tid) && visible(p)));
   app.innerHTML = `<main class="wrap" id="main">
     ${homeWing()}${backLink('#/','חזרה לכריכה')}
     <div class="dhead"><span class="bar" style="background:${doorOf(t.door).color}"></span><h1>${esc(t.title)}</h1>
@@ -768,6 +770,18 @@ function renderStep(i){
     </nav>
   </main>`;
 }
+/* תרגול השבוע (data.weekly, נקבע ב-fixes.py): לפני תחילת השבוע "בשבוע הבא", בתוכו "השבוע", ואחריו נעלם */
+function weeklyHtml(){
+  const w = D.weekly; if(!w) return '';
+  const d = new Date(), today = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  if(today > w.to) return '';
+  const t = topicOf(w.topic); if(!t) return '';
+  const n = D.practices.filter(p=>inTopic(p,t.id) && visible(p)).length;
+  const dm = s => { const [y,m,dd]=s.split('-').map(Number); return dd+'.'+m; };
+  return `<section class="season2" aria-labelledby="h-week"><span class="k">${today < w.from ? 'התרגול של השבוע הבא' : 'התרגול של השבוע'} · ${dm(w.from)}-${dm(w.to)}</span><h2 id="h-week">${esc(t.title)}</h2>
+    ${t.description?`<p class="hint" style="margin:0">${esc(t.description)}</p>`:''}
+    <div class="chips"><a class="chip" href="#/topic/${esc(t.id)}">לכל ${n} התרגולים</a></div></section>`;
+}
 function seasonHtml(){
   const m = new Date().getMonth() + 1;
   /* כשחן כבר שיבצה חודשים, הכריכה מציגה את שלבי החודש הנוכחי מהבחירה שלה */
@@ -784,10 +798,11 @@ function seasonHtml(){
 function renderDoor(n, tid){
   const d = doorOf(n);
   const all = D.practices.filter(p=>p.door===n && visible(p));
-  const topicIds = [...new Set(all.map(p=>p.topic))];
-  const topics = topicIds.map(topicOf).filter(Boolean);
+  const topicIds = [...new Set(all.map(p=>p.topic).concat(D.topics.filter(x=>x.door===n).map(x=>x.id)))];
+  const topics = topicIds.map(topicOf).filter(Boolean).filter(x=>D.practices.some(p=>inTopic(p,x.id) && visible(p)));
+  const inT = id => D.practices.filter(p=>inTopic(p,id) && visible(p));
   const t = tid ? topicOf(tid) : null;
-  const list = sortForMode(t ? all.filter(p=>p.topic===t.id) : all);
+  const list = sortForMode(t ? inT(t.id) : all);
   const world = {1:'הגעה, רגש ומודעות עצמית',2:'עבודה עם מחשבות',3:'תכנון, מאמץ וניהול עצמי',4:'רגשות, אירועים והתנהגות',5:'האחר, ערכים וזהות',6:'קשב, נוכחות וסיכום'}[n];
   app.innerHTML = `<main class="wrap" id="main">
     ${homeWing()}
@@ -797,7 +812,7 @@ function renderDoor(n, tid){
     ${filterLine()}
     ${topics.length>1?`<nav class="chips scroll" aria-label="נושאים">
       <a class="chip" href="#/door/${n}" aria-current="${!t}">הכול <span class="c">${all.length}</span></a>
-      ${topics.map(x=>`<a class="chip" href="#/door/${n}?t=${esc(x.id)}" aria-current="${!!t&&t.id===x.id}">${esc(x.title)} <span class="c">${all.filter(p=>p.topic===x.id).length}</span></a>`).join('')}
+      ${topics.map(x=>`<a class="chip" href="#/door/${n}?t=${esc(x.id)}" aria-current="${!!t&&t.id===x.id}">${esc(x.title)} <span class="c">${inT(x.id).length}</span></a>`).join('')}
     </nav>`:''}
     ${t&&t.description?`<p class="desc">${esc(t.description)}</p>`:''}
     ${t&&t.materials&&t.materials.length?`<div class="mats"><b>מהחומרים הסגולים:</b>${t.materials.map(m=>`<a class="chip" href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.name)}</a>`).join('')}</div>`:''}

@@ -2,7 +2,7 @@
    הדף והנתונים: קודם מהרשת, כדי שעדכון יגיע מיד, ובלי רשת מהעותק השמור.
    תמונות הדפים: מהעותק השמור, ונשמרות בפעם הראשונה שפותחים אותן.
    רישום השימוש וההקלטות: תמיד מהרשת, אף פעם לא מהעותק. */
-const V = 'pinkas-2026-10-04c';
+const V = 'pinkas-2026-10-07a';
 const IMG = 'pinkas-img', EXT = 'pinkas-ext';
 const CORE = ['./', 'index.html', 'data-v2.js', 'logo-hi.png', 'wings-hi.png', 'boger-poster.jpg',
               'icon-32.png', 'icon-180.png', 'icon-192.png', 'manifest.webmanifest'];
