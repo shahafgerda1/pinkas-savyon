@@ -770,15 +770,25 @@ function renderStep(i){
     </nav>
   </main>`;
 }
-/* תרגול השבוע (data.weekly, נקבע ב-fixes.py): לפני תחילת השבוע "בשבוע הבא", בתוכו "השבוע", ואחריו נעלם */
+/* תרגול השבוע (data.weekly, רשימת שבועות מ-fixes.py, 7.10.2026): ראשון עד חמישי מוצג התרגול של השבוע,
+   ומשישי כבר של השבוע הבא, שביום ראשון חוזר להיקרא "השבוע". שבוע בלי תרגול ברשימה: הקטע לא מוצג. */
 function weeklyHtml(){
-  const w = D.weekly; if(!w) return '';
-  const d = new Date(), today = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-  if(today > w.to) return '';
+  const weeks = [].concat(D.weekly || []); if(!weeks.length) return '';
+  const iso = x => x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');
+  const d = new Date(), dow = d.getDay(), early = dow >= 5;  /* 5 שישי, 6 שבת */
+  const sun = new Date(d.getFullYear(), d.getMonth(), d.getDate() + (early ? 7 - dow : -dow)), key = iso(sun);
+  const w = weeks.find(x => x.from <= key && key <= x.to); if(!w) return '';
+  const dm = s => { const [y,m,dd]=s.split('-').map(Number); return dd+'.'+m; };
+  const k = `${early ? 'התרגול של השבוע הבא' : 'התרגול של השבוע'} · ${dm(w.from)}-${dm(w.to)}`;
+  const st = w.step ? STEPS.find(x=>x.i===w.step) : null;
+  if(st){
+    const n = stepPractices(st).filter(p=>visible(p)).length;
+    return `<section class="season2" aria-labelledby="h-week"><span class="k">${k}</span><h2 id="h-week">${esc(w.title || st.t)}</h2>
+      <div class="chips"><a class="chip" href="#/step/${st.i}">${n ? `לכל ${n} התרגולים` : 'לשלב במהלך השנתי'}</a></div></section>`;
+  }
   const t = topicOf(w.topic); if(!t) return '';
   const n = D.practices.filter(p=>inTopic(p,t.id) && visible(p)).length;
-  const dm = s => { const [y,m,dd]=s.split('-').map(Number); return dd+'.'+m; };
-  return `<section class="season2" aria-labelledby="h-week"><span class="k">${today < w.from ? 'התרגול של השבוע הבא' : 'התרגול של השבוע'} · ${dm(w.from)}-${dm(w.to)}</span><h2 id="h-week">${esc(t.title)}</h2>
+  return `<section class="season2" aria-labelledby="h-week"><span class="k">${k}</span><h2 id="h-week">${esc(w.title || t.title)}</h2>
     ${t.description?`<p class="hint" style="margin:0">${esc(t.description)}</p>`:''}
     <div class="chips"><a class="chip" href="#/topic/${esc(t.id)}">לכל ${n} התרגולים</a></div></section>`;
 }

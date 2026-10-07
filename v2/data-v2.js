@@ -9750,9 +9750,11 @@ window.PINKAS = {
    "short": true
   }
  ],
- "weekly": {
-  "topic": "cchekin",
-  "from": "2026-10-11",
-  "to": "2026-10-17"
- }
+ "weekly": [
+  {
+   "topic": "cchekin",
+   "from": "2026-10-11",
+   "to": "2026-10-17"
+  }
+ ]
 };
