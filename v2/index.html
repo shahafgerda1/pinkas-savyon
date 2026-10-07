@@ -924,7 +924,8 @@ function renderPractice(p){
           ${p.type==='deck'&&p.file?`<a class="btn ghost" href="${esc(fileUrl(p.file))}" target="_blank" rel="noopener">פתיחה בלשונית חדשה</a>`:''}
         </div>
       </div>
-      ${whyBox(p)}`;
+      ${whyBox(p)}
+      ${(m=>m?`<div class="box"><h2>החומרים של הנושא</h2>${m}</div>`:'')(topicMatsHtml(p))}`;
   } else if(p.type==='audio'){
     body = `<div class="ptitle"><h1>${esc(p.title)}</h1>${tagsHtml(p)}</div>
       ${noteBox(p)}
@@ -955,15 +956,25 @@ function renderPractice(p){
   if(p.audio) wireAudio(p);
   track('open', p);
 }
-function fullHtml(p){
-  const F = p.full || {}, out = [];
-  if(F.goal) out.push(`<p class="goal"><b>המטרה:</b> ${esc(F.goal)}</p>`);
-  /* החומרים של הנושא נכנסים לדף התרגול עצמו, ולא רק לדף הנושא: מה שהתרגול מזכיר ב"מה להכין" עולה ראשון */
-  const t = topicOf(p.topic), mats = (p.materials && p.materials.length ? p.materials : (t && t.materials) || []);
+/* כל המצגות ודפי העבודה של הנושא מופיעים בכל תרגול שלו (הכרעת שחף, 7.10.2026):
+   החומרים הסגולים בדרייב, ומה שהתרגול מזכיר ב"מה להכין" עולה ראשון, ואחריהם המצגות והדפים שבפנקס עצמו */
+function topicMatsHtml(p){
+  const F = p.full || {}, t = topicOf(p.topic);
+  const mats = p.materials && p.materials.length ? p.materials : (t && t.materials) || [];
   const base = m => m.name.replace(/\s*\(.*\)\s*$/,'').trim();
   const named = mats.filter(m=>F.prep && F.prep.includes(base(m)));
   const ordered = named.concat(mats.filter(m=>!named.includes(m)));
-  const matsHtml = ordered.length ? `<div class="mats"><b>${F.prep?'לפתיחה:':'מהחומרים הסגולים:'}</b>${ordered.map(m=>`<a class="chip" href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.name)}</a>`).join('')}</div>` : '';
+  const own = D.practices.filter(x=>x.id!==p.id && (x.type==='deck'||x.type==='page') && inTopic(x,p.topic) && visible(x));
+  const decks = own.filter(x=>x.type==='deck'), pages = own.filter(x=>x.type==='page');
+  const row = (label, items) => items.length ? `<div class="mats"><b>${label}</b>${items.join('')}</div>` : '';
+  return row('מהחומרים הסגולים:', ordered.map(m=>`<a class="chip" href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.name)}</a>`))
+    + row('מצגות בנושא:', decks.map(x=>`<a class="chip" href="#/p/${esc(x.id)}">${esc(x.title.replace(/^מצגת:\s*/,''))}</a>`))
+    + row('דפי עבודה בנושא:', pages.map(x=>`<a class="chip" href="#/p/${esc(x.id)}">${esc(x.title)}</a>`));
+}
+function fullHtml(p){
+  const F = p.full || {}, out = [];
+  if(F.goal) out.push(`<p class="goal"><b>המטרה:</b> ${esc(F.goal)}</p>`);
+  const matsHtml = topicMatsHtml(p);
   if(F.prep) out.push(`<div class="box"><h2>מה להכין</h2><p>${esc(F.prep)}</p>${matsHtml}</div>`);
   else if(matsHtml) out.push(`<div class="box"><h2>החומרים של הנושא</h2>${matsHtml}</div>`);
   if(F.steps && F.steps.length) out.push(`<div class="box"><h2>${p.type==='activity'?'איך עושים':'שלב אחרי שלב'}</h2><ol class="steps">${F.steps.map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div>`);
