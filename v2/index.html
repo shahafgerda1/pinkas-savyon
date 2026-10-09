@@ -979,7 +979,7 @@ function topicMatsHtml(p){
   const row = (label, items) => items.length ? `<div class="mats"><b>${label}</b>${items.join('')}</div>` : '';
   return row('מהחומרים הסגולים:', ordered.map(m=>`<a class="chip" href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.name)}</a>`))
     + row('מצגות בנושא:', decks.map(x=>`<a class="chip" href="#/p/${esc(x.id)}">${esc(x.title.replace(/^מצגת:\s*/,''))}</a>`))
-    + row('דפי עבודה בנושא:', pages.map(x=>`<a class="chip" href="#/p/${esc(x.id)}">${esc(x.title)}</a>`));
+    + row('פנקסי תרגול בנושא:', pages.map(x=>`<a class="chip" href="#/p/${esc(x.id)}">${esc(x.title)}</a>`));
 }
 function fullHtml(p){
   const F = p.full || {}, out = [];
