@@ -780,20 +780,22 @@ function weeklyHtml(){
   const w = weeks.find(x => x.from <= key && key <= x.to); if(!w) return '';
   const dm = s => { const [y,m,dd]=s.split('-').map(Number); return dd+'.'+m; };
   const k = `${early ? 'התרגול של השבוע הבא' : 'התרגול של השבוע'} · ${dm(w.from)}-${dm(w.to)}`;
+  const why = [].concat(w.why || []).map(x=>`<p class="hint" style="margin:0">${esc(x)}</p>`).join('');
   const st = w.step ? STEPS.find(x=>x.i===w.step) : null;
   if(st){
     const n = stepPractices(st).filter(p=>visible(p)).length;
-    return `<section class="season2" aria-labelledby="h-week"><span class="k">${k}</span><h2 id="h-week">${esc(w.title || st.t)}</h2>
+    return `<section class="season2" aria-labelledby="h-week"><span class="k">${k}</span><h2 id="h-week">${esc(w.title || st.t)}</h2>${why}
       <div class="chips"><a class="chip" href="#/step/${st.i}">${n ? `לכל ${n} התרגולים` : 'לשלב במהלך השנתי'}</a></div></section>`;
   }
   const t = topicOf(w.topic); if(!t) return '';
   const n = D.practices.filter(p=>inTopic(p,t.id) && visible(p)).length;
   return `<section class="season2" aria-labelledby="h-week"><span class="k">${k}</span><h2 id="h-week">${esc(w.title || t.title)}</h2>
-    ${t.description?`<p class="hint" style="margin:0">${esc(t.description)}</p>`:''}
+    ${t.description?`<p class="hint" style="margin:0">${esc(t.description)}</p>`:''}${why}
     <div class="chips"><a class="chip" href="#/topic/${esc(t.id)}">לכל ${n} התרגולים</a></div></section>`;
 }
 function seasonHtml(){
   const m = new Date().getMonth() + 1;
+  if(m === 10) return '';  /* אוקטובר ירד מהמהלך השנתי (9.10.2026): מחליטים בשבוע הבא על מהלך שבועי */
   /* כשחן כבר שיבצה חודשים, הכריכה מציגה את שלבי החודש הנוכחי מהבחירה שלה */
   const now = STEPS.filter(st=>stepMonths(st).includes(m) && stepPractices(st).some(p=>visible(p)));
   if(now.length) return `<section class="season2" aria-labelledby="h-season"><span class="k">עכשיו במהלך השנתי</span><h2 id="h-season">${esc(MONTH_NAME[m])}</h2>
