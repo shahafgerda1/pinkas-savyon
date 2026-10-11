@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex">
+<title>מרחב השפה הקשובה · כניסת צוות</title>
+<link rel="icon" href="icon-32.png">
+<meta name="theme-color" content="#54078F">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Rubik:wght@700;800&display=swap">
+<style>
+  :root{
+    --brand:#54078F; --brand-dark:#3B0566; --bg:#F6F3EA; --ink:#2B1245; --ink2:#5B4A70;
+    --soft:#E9DFF3; --line:#B9A8CC; --card:#fff; --ok:#1F7A4A; --bad:#A3271B; --warn:#8A4E0B;
+  }
+  /* דיאלוגים בתוך הדף. confirm/alert/prompt של הדפדפן אינם אמינים בתוך ה-iframe
+     של Apps Script: הם עלולים לא להופיע, ואז הלחיצה לא עושה כלום בשקט. */
+  .ask-back{position:fixed;inset:0;background:rgba(10,15,25,.55);display:flex;align-items:center;
+    justify-content:center;padding:16px;z-index:10000}
+  .ask-box{background:var(--card);color:var(--ink);border-radius:16px;padding:20px;box-shadow:0 12px 40px rgba(0,0,0,.35);
+    width:100%;max-width:460px;max-height:88vh;overflow-y:auto;text-align:right}
+  .ask-box h3{margin:0 0 10px;font-size:18px;font-family:Rubik,sans-serif}
+  .ask-box .ask-msg{margin:0;line-height:1.65;white-space:pre-line;font-size:15px}
+  .ask-box textarea{width:100%;min-height:110px;margin-top:12px;font:inherit;font-size:16px;padding:10px 12px;
+    border:1px solid var(--line);border-radius:12px}
+  .ask-foot{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+  .ask-foot button{min-height:44px;font:inherit;font-weight:700;font-size:15px;cursor:pointer;border-radius:12px;padding:0 18px;
+    border:2px solid var(--brand);background:var(--brand);color:#fff}
+  .ask-foot button.ask-no{background:transparent;color:var(--brand)}
+
+  *{box-sizing:border-box}
+  [hidden]{display:none !important}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:Assistant,system-ui,sans-serif;font-size:16px;line-height:1.5;overflow-x:hidden}
+  :focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+  h1,h2,h3{font-family:Rubik,sans-serif;margin:0}
+  a{color:var(--brand)}
+  .wrap{max-width:760px;margin:0 auto;padding:20px 16px 60px;display:flex;flex-direction:column;gap:18px}
+  .top{display:flex;align-items:center;gap:12px}
+  .top h1{font-weight:800;font-size:24px;color:var(--brand);line-height:1.1}
+  .top .who{font-size:14px;color:var(--ink2)}
+  .top .gap{flex:1}
+  .tabs{display:flex;gap:6px;padding:4px;background:var(--soft);border-radius:14px}
+  .tabs button{flex:1 1 0;min-height:44px;border:0;border-radius:10px;background:transparent;font:inherit;font-weight:600;font-size:15px;color:var(--ink);cursor:pointer}
+  .tabs button[aria-selected="true"]{background:var(--brand);color:#fff;font-weight:700}
+  .tabs.many{flex-wrap:wrap}
+  .tabs.many button{flex:1 1 30%}
+  .use-sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .use-sum div{background:var(--soft);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:2px}
+  .use-sum b{font-family:Rubik,sans-serif;font-size:22px;color:var(--brand)}
+  .use-sum span{font-size:13px;color:var(--ink2)}
+  .uitem{display:flex;gap:10px;align-items:flex-start;border-top:1px solid #EEE8F4;padding:10px 0}
+  .uitem:first-child{border-top:0}
+  .uitem .bd{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .uitem .t{font-weight:700;font-size:16px}
+  .uitem .s{font-size:14px;color:var(--ink2)}
+  .tabs .n{display:inline-block;min-width:20px;padding:0 6px;margin-inline-start:4px;border-radius:10px;background:#D4607A;color:#fff;font-size:13px}
+  .card{background:var(--card);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px}
+  .card h2{font-size:19px}
+  .sub{font-size:15px;color:var(--ink2);margin:0}
+  .step{display:flex;flex-direction:column;gap:10px}
+  .step>h3{font-size:17px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{min-height:44px;padding:0 16px;border:1px solid var(--line);border-radius:22px;background:#fff;font:inherit;font-weight:600;font-size:15px;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+  .chip[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:700}
+  .chip .dot{width:16px;height:6px;border-radius:3px}
+  .doors{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .doors .chip{border-radius:14px;justify-content:flex-start;text-align:start;padding:8px 12px;line-height:1.25}
+  label.f{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--ink2)}
+  input[type=text],input[type=email],input[type=number],textarea{width:100%;font:inherit;font-size:16px;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)}
+  textarea{min-height:110px;resize:vertical}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .row>.btn,.row>.btn2{flex:1 1 150px}
+  .btn{min-height:52px;border:0;border-radius:14px;background:var(--brand);color:#fff;font-family:Rubik,sans-serif;font-weight:700;font-size:17px;padding:0 18px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+  .btn:hover{background:var(--brand-dark)}
+  .btn:disabled{opacity:.45;cursor:default}
+  .btn2{min-height:48px;border:2px solid var(--brand);border-radius:14px;background:transparent;color:var(--brand);font-family:Rubik,sans-serif;font-weight:700;font-size:16px;padding:0 16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+  .btn3{min-height:44px;border:0;border-radius:12px;background:#F1EDF6;color:var(--ink2);font:inherit;font-weight:600;padding:0 14px;cursor:pointer}
+  .check{display:flex;gap:10px;align-items:flex-start;font-size:16px;cursor:pointer;min-height:44px;padding-top:10px}
+  .check input{width:22px;height:22px;margin:0;flex-shrink:0;accent-color:var(--brand)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .hint{font-size:14px;color:var(--ink2);margin:0}
+  .warn{background:#FFF7EC;border-inline-start:4px solid #D98A2B;border-radius:10px;padding:10px 12px;font-size:15px;color:#5a3a10}
+  .msg{border-radius:12px;padding:10px 12px;font-size:15px}
+  .msg.ok{background:#EAF6EF;color:var(--ok)}
+  .msg.err{background:#FBEDEB;color:var(--bad)}
+  .pick{width:100%;min-height:48px;text-align:start;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit;color:inherit;display:flex;justify-content:space-between;gap:8px;cursor:pointer}
+  .pick .ph{color:var(--ink2)}
+  .rec{display:flex;flex-direction:column;align-items:center;gap:12px;padding:20px;background:var(--brand);border-radius:18px;color:#fff}
+  .rec .big{width:84px;height:84px;border-radius:42px;border:0;background:#fff;color:var(--brand);font-size:16px;font-weight:700;cursor:pointer}
+  .rec .big.on{background:#D4607A;color:#fff}
+  .rec audio{width:100%}
+  /* קבצים שנבחרו */
+  .fl{display:flex;gap:10px;align-items:center;border-top:1px solid #EEE8F4;padding:10px 0}
+  .fl:first-child{border-top:0}
+  .fl .th{width:56px;height:56px;border-radius:10px;background:var(--soft);flex:0 0 auto;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:13px;color:var(--ink2)}
+  .fl .th img{width:100%;height:100%;object-fit:cover}
+  .fl .fx{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+  .fl .s{font-size:13px;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fl .acts{display:flex;gap:4px}
+  .fl .acts button{min-width:44px;min-height:44px;border:0;border-radius:10px;background:#F1EDF6;color:var(--ink2);cursor:pointer;font-size:15px}
+  /* רשימות */
+  .item{display:flex;gap:12px;align-items:flex-start;border-top:1px solid #EEE8F4;padding:12px 0}
+  .item:first-child{border-top:0}
+  .item .th{width:72px;height:72px;border-radius:12px;background:var(--soft);flex:0 0 auto;object-fit:cover;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--ink2);text-align:center}
+  .item .bd{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+  .item .t{font-family:Rubik,sans-serif;font-weight:700;font-size:16px}
+  .item .s{font-size:14px;color:var(--ink2)}
+  .item .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+  .pill{display:inline-block;border-radius:12px;padding:2px 10px;font-size:13px;font-weight:700}
+  .pill.wait{background:#FFF1D6;color:var(--warn)}
+  .pill.live{background:#E3F4EA;color:var(--ok)}
+  .pill.back{background:#FBE3E6;color:var(--bad)}
+  .note{background:#FBF3F4;border-inline-start:3px solid #D4607A;border-radius:8px;padding:8px 10px;font-size:14px;white-space:pre-line}
+  /* אישור */
+  .rv{border:1px solid #EEE8F4;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
+  .rv .tags{display:flex;flex-wrap:wrap;gap:6px}
+  .rv .tag{background:var(--soft);border-radius:12px;padding:3px 10px;font-size:13px;font-weight:600}
+  .rv .prev{display:flex;gap:8px;overflow-x:auto}
+  .rv .prev img{height:140px;border-radius:10px;background:#fff;border:1px solid #EEE8F4}
+  .rv .prev a{display:inline-flex;align-items:center;min-height:44px;padding:0 12px;border-radius:10px;background:var(--soft);font-weight:700;text-decoration:none}
+  .rv .text{white-space:pre-line;background:#FBFAFD;border-radius:10px;padding:10px 12px;font-size:15px;max-height:260px;overflow-y:auto}
+  .rv audio{width:100%}
+  /* בורר מותאם. לא select, כי ב-iframe של Apps Script הוא לא נפתח בנייד */
+  .sheet{position:fixed;inset:0;background:rgba(20,16,30,.45);display:none;z-index:50}
+  .sheet.open{display:block}
+  .sheet .in{position:absolute;inset-inline:0;bottom:0;max-height:86vh;background:#fff;border-radius:18px 18px 0 0;display:flex;flex-direction:column;overflow:hidden}
+  .sheet .hd{padding:14px;border-bottom:1px solid #EEE8F4;display:flex;gap:10px;align-items:center}
+  .sheet .bd{padding:8px 14px 20px;overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
+  .sheet .opt{min-height:44px;padding:10px;border-bottom:1px solid #EEE8F4;cursor:pointer;border-radius:10px;display:flex;align-items:center}
+  .sheet .opt:hover{background:var(--soft)}
+  .lnk{background:#FBFAFD;border:1px solid #EEE8F4;border-radius:12px;padding:10px;font-size:14px;word-break:break-all}
+  /* שיוך בוגר סביון */
+  .bg{border:1px solid #EEE8F4;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
+  .bg.ok{background:#F4FBF6;border-color:#CBE8D6}
+  .bg .ex{font-size:14px;color:var(--ink2);margin:0}
+  .bg .props{display:flex;flex-direction:column;gap:6px}
+  .bg .prop{display:flex;gap:8px;align-items:flex-start;font-size:15px}
+  .bg .prop .dot,.bpart .dot{width:12px;height:12px;border-radius:6px;flex-shrink:0;margin-top:5px}
+  .bg .who{font-size:13px;color:var(--ink2)}
+  .bg .cm{font-size:14px;background:#FBFAFD;border-radius:8px;padding:6px 10px}
+  .bg .done{font-weight:700;color:var(--ok)}
+  .bpart{border:1px solid #EEE8F4;border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:2px}
+  .bpart h4{margin:0 0 4px;font-family:Rubik,sans-serif;font-size:15px;display:flex;gap:8px;align-items:center}
+  .bar{height:8px;border-radius:4px;background:var(--soft);overflow:hidden}
+  .bar i{display:block;height:8px;background:var(--ok)}
+  /* המהלך השנתי: שידוך תרגולים לשלבים */
+  .mhs{display:flex;flex-direction:column}
+  .mhs a.st{display:flex;gap:12px;align-items:center;border-top:1px solid #EEE8F4;padding:10px 4px;text-decoration:none;color:inherit;min-height:56px}
+  .mhs a.st:first-child{border-top:0}
+  .mhs a.st:hover{background:#FBFAFD}
+  .mhs .num{width:34px;height:34px;border-radius:17px;color:#fff;font-family:Rubik,sans-serif;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .mhs .bd{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .mhs .t{font-weight:700;font-size:16px}
+  .mhs .s{font-size:14px;color:var(--ink2)}
+  .mhs .s b{color:var(--ok)}
+  .mhs .dom{font-family:Rubik,sans-serif;font-size:15px;margin:14px 0 2px;display:flex;align-items:center;gap:8px}
+  .mhs .dom .dot{width:12px;height:12px;border-radius:6px}
+  .mh-status{font-size:14px;color:var(--ink2);min-height:20px}
+  .mh-status.err{color:var(--bad);font-weight:700}
+  .mon{display:flex;flex-wrap:wrap;gap:6px}
+  .mon .chip{min-width:64px;justify-content:center;padding:0 12px}
+  .pr{display:flex;gap:10px;align-items:center;border-top:1px solid #EEE8F4;padding:10px 0}
+  .pr:first-child{border-top:0}
+  .pr .th{width:64px;height:64px;border-radius:10px;background:var(--soft);flex:0 0 auto;object-fit:cover;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--ink2);text-align:center;padding:4px;overflow:hidden}
+  .pr .bd{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .pr .t{font-weight:700;font-size:15px;color:var(--ink);text-decoration:none}
+  .pr .t:hover{text-decoration:underline}
+  .pr .s{font-size:13px;color:var(--ink2);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .pr .acts{display:flex;gap:4px;flex-shrink:0}
+  .pr .acts button{min-width:44px;min-height:44px;border:0;border-radius:10px;background:#F1EDF6;color:var(--ink2);cursor:pointer;font:inherit;font-size:16px;font-weight:700}
+  .pr .acts button.add{background:var(--brand);color:#fff;padding:0 12px}
+  .pr .acts button.star[aria-pressed="true"]{background:#FFF1D6;color:#B7791F}
+  .pr.starter{background:#FFFBF2;border-radius:12px;padding-inline:8px}
+  .tagS{display:inline-block;border-radius:10px;padding:1px 8px;font-size:12px;font-weight:700;background:#FFF1D6;color:#8A4E0B;margin-inline-start:6px}
+  .tagW{display:inline-block;border-radius:10px;padding:1px 8px;font-size:12px;font-weight:700;background:#FBE3E6;color:var(--bad);margin-inline-start:6px}
+  .mhnav{display:flex;gap:8px;flex-wrap:wrap}
+  @media (max-width:520px){ .pr.ch{flex-wrap:wrap} .pr.ch .acts{width:100%;justify-content:flex-end} }
+  .mhnav .btn3{flex:1 1 140px}
+  @media (min-width:620px){ .doors{grid-template-columns:repeat(3,minmax(0,1fr))} }
+</style>
+</head>
+<body>
+<div class="wrap" id="app" aria-live="polite"><p class="sub" style="padding:24px 0">רגע, טוען...</p></div>
+
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle"><div class="in">
+  <div class="hd">
+    <strong id="sheetTitle">בחירה</strong>
+    <button class="btn3" style="margin-inline-start:auto" onclick="closeSheet()">סגירה</button>
+  </div>
+  <div class="bd" id="sheetBody"></div>
+</div></div>
+
+<script>
+var GAS = "https://script.google.com/macros/s/AKfycbwwr4eOX9jFACxB_nyTfk0k-wOOCTKozJE6SIRFRFNjcOZdcvSDWVX5QdmFerebVixoeg/exec";
+var KS = "pk_ses", KT = "pk_tok", KD = "pk_dev", KPLAN = "pinkasPlannerToken";
+var TOKEN = "", SESSION = "", SETUP = "", VIEW0 = "", DEV = "";
+(function(){
+  try{
+    var q = new URLSearchParams(location.search), t = q.get("t");
+    if(t) localStorage.setItem(KT, t);
+    TOKEN = localStorage.getItem(KT) || ""; SESSION = localStorage.getItem(KS) || "";
+    DEV = localStorage.getItem(KD) || "";
+    if(!DEV){ DEV = Math.random().toString(36).slice(2, 12); localStorage.setItem(KD, DEV); }
+    var v = q.get("view") || (location.hash || "").replace(/^#\/?/, "");
+    if(/^(new|mine|review|boger|mahalach|settings)$/.test(v)) VIEW0 = v;
+    if(t || q.get("view")) history.replaceState(null, "", location.pathname + (VIEW0 ? "#" + VIEW0 : ""));
+  }catch(e){}
+})();
+var ME = null, META = null, TAB = "new";
+var TYPES = [
+  {id:"page", label:"דף להקרנה"}, {id:"audio", label:"הקלטה"}, {id:"activity", label:"פעילות"},
+  {id:"write", label:"תרגול כתוב"}, {id:"deck", label:"מצגת"}
+];
+var TYPE_LABEL = {}; TYPES.forEach(function(t){ TYPE_LABEL[t.id] = t.label; });
+var AUD = [{id:"class",label:"לכיתה"},{id:"student",label:"לתלמיד אחד"},{id:"staff",label:"לצוות"}];
+var LAYERS = ["כולם","צעירים","ביניים","חטיבה","צוות"];
+var DOOR_FALLBACK = [
+  {n:1,title:"להגיע ולהרגיש",color:"#3AA66F"},{n:2,title:"לעשות סדר במחשבות",color:"#7C5CC4"},
+  {n:3,title:"לתכנן ולהתאמץ נכון",color:"#D98A2B"},{n:4,title:"להתמודד עם רגש או אירוע",color:"#D4607A"},
+  {n:5,title:"להתחבר לאחר",color:"#2F9AA6"},{n:6,title:"להקשיב ולהיות נוכח",color:"#4A7BD0"}
+];
+/* הטופס כולו במקום אחד, כדי שבנייה מחדש של המסך לא תמחק מה שנכתב */
+var F = null;
+function newForm(){
+  F = {type:"", title:"", explanation:"", door:0, topicId:"", topicTitle:"", audience:[], minutes:"", layer:"",
+       text:"", caution:"", hideName:false, consent:false, files:[], audio:null, group:{id:null, done:0}};
+}
+newForm();
+var MAX_FILES = 10, MAX_AUDIO_MB = 25;
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(c){
+  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+
+/* ── דיאלוגים בתוך הדף ── הכלל: פעולה לעולם אינה מסתיימת בלי סימן על המסך. */
+var ASK_OPEN = null;
+function askClose(){ if(!ASK_OPEN) return; var el = ASK_OPEN; ASK_OPEN = null; el.remove(); }
+function askBox(o){
+  askClose();
+  var back = document.createElement("div"); back.className = "ask-back";
+  var box = document.createElement("div"); box.className = "ask-box";
+  box.setAttribute("role","dialog"); box.setAttribute("aria-modal","true");
+  if(o.title){ var h = document.createElement("h3"); h.textContent = o.title; box.appendChild(h); }
+  var msg = document.createElement("p"); msg.className = "ask-msg"; msg.textContent = o.text || ""; box.appendChild(msg);
+  var ta = null;
+  if(o.input){ ta = document.createElement("textarea"); ta.value = o.value || ""; if(o.placeholder) ta.placeholder = o.placeholder; box.appendChild(ta); }
+  var foot = document.createElement("div"); foot.className = "ask-foot";
+  var done = function(val){ askClose(); if(o.then) o.then(val); };
+  var ok = document.createElement("button"); ok.type = "button"; ok.textContent = o.yes || "אישור";
+  ok.onclick = function(){ done(ta ? ta.value : true); }; foot.appendChild(ok);
+  if(o.no){ var no = document.createElement("button"); no.type = "button"; no.className = "ask-no"; no.textContent = o.no;
+    no.onclick = function(){ done(null); }; foot.appendChild(no); }
+  box.appendChild(foot); back.appendChild(box);
+  back.onclick = function(e){ if(e.target === back && o.no) done(null); };
+  back.__cancel = function(){ done(null); };
+  document.body.appendChild(back); ASK_OPEN = back;
+  setTimeout(function(){ (ta || ok).focus(); }, 30);
+}
+function askConfirm(text, onYes, o){ o = o || {};
+  askBox({title:o.title || "לאשר?", text:text, yes:o.yes || "אישור", no:o.no || "ביטול",
+          then:function(v){ if(v) onYes(); }}); }
+function askText(text, def, onOk, o){ o = o || {};
+  askBox({title:o.title || "", text:text, input:true, value:def || "", placeholder:o.placeholder || "",
+          yes:o.yes || "אישור", no:o.no || "ביטול", then:function(v){ if(v !== null) onOk(v); }}); }
+function notify(text, o){ o = o || {}; askBox({title:o.title || "", text:String(text), yes:"הבנתי", then:o.then || null}); }
+document.addEventListener("keydown", function(e){
+  if(e.key === "Escape"){ if(ASK_OPEN) ASK_OPEN.__cancel(); else closeSheet(); }
+}, true);
+
+function auth(){ return SESSION ? {s:SESSION} : {t:TOKEN}; }
+function netErr(){ return new Error("אין חיבור לשרת. בדקו את האינטרנט ונסו שוב."); }
+function srv(fn, cb, args, onErr){
+  var eh = onErr || showErr;
+  fetch(GAS, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"},
+              body:JSON.stringify({fn:fn, args:args || []})})
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if(!j.ok){
+        if(SESSION && /אין הרשאה/.test(j.error || "") && fn !== "apiTeamLogin"){ endSession(); return; }
+        eh(new Error(j.error || "שגיאה")); return;
+      }
+      if(cb) cb(j.data);
+    }, function(){ eh(netErr()); });
+}
+function endSession(){
+  SESSION = ""; try{ localStorage.removeItem(KS); localStorage.removeItem(KPLAN); }catch(e){}
+  boot();
+}
+function msgBox(){ return document.querySelector(".sheet.open #emsg") || $("msg"); }
+function showErr(e){ var t = e && e.message ? e.message : String(e); var m = msgBox();
+  if(!m){ notify(t); return; } m.hidden = false; m.className = "msg err"; m.textContent = t; busy(false); }
+function showOk(t){ var m = msgBox(); if(!m) return; m.hidden = false; m.className = "msg ok"; m.textContent = t; }
+function busy(b, txt){ var s = $("send"); if(!s) return; s.disabled = b;
+  s.textContent = txt || (b ? "רגע..." : (F.group.id ? "המשך השליחה" : "שליחה לאישור")); }
+
+function openSheet(title, html){ $("sheetTitle").textContent = title; $("sheetBody").innerHTML = html; $("sheet").classList.add("open"); }
+function closeSheet(){ $("sheet").classList.remove("open"); }
+$("sheet").onclick = function(e){ if(e.target.id === "sheet") closeSheet(); };
+
+/* ── כניסה ─────────────────────────────────────────────────── */
+function boot(){
+  srv("apiWhoAmI", function(r){
+    if(!r.ok) return renderLogin();
+    ME = r;
+    TAB = ((VIEW0 === "review" || VIEW0 === "boger") && r.approver) ? VIEW0 : (VIEW0 === "mine" ? "mine" : "new");
+    if(VIEW0 === "mahalach" && r.mahalach) TAB = "mahalach";
+    if(VIEW0 === "settings" && r.manager) TAB = "settings";
+    render();
+    srv("apiMeta", function(d){ META = d; if(TAB === "new") render(); }, [auth()], function(){});
+  }, [auth()]);
+}
+function renderLogin(){
+  var h = '<div class="top"><h1>מרחב השפה הקשובה</h1><span class="gap"></span><a class="who" href="./">→ לאתר</a></div>' +
+    '<div class="card"><h2>כניסת צוות מוביל השפה הקשובה</h2>' +
+    '<p class="sub">הכניסה בסיסמה של הצוות המוביל, בלי קישור אישי.</p>' +
+    '<div id="step1"><label class="f">סיסמה<input type="password" id="pw" autocomplete="current-password" onkeydown="if(event.key===\'Enter\')doPw()"></label>' +
+    '<div class="row" style="margin-top:10px"><button class="btn" onclick="doPw()">המשך</button></div></div>' +
+    '<div id="step2" hidden><h3>מי נכנסת?</h3><div class="chips" id="names"></div></div>' +
+    '<div class="msg" id="msg" hidden></div></div>' +
+    '<details class="card"><summary style="min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:700">איש צוות ורוצה להוסיף תרגול?</summary>' +
+    '<p class="sub">כתבו את המייל שלכם, ונשלח אליו קישור אישי.</p>' +
+    '<label class="f">המייל שלי<input type="email" id="em" autocomplete="email" inputmode="email"></label>' +
+    '<div class="row" style="margin-top:10px"><button class="btn2" onclick="askLink()">שלחו לי קישור</button></div>' +
+    '<div class="msg" id="msg2" hidden></div></details>';
+  $("app").innerHTML = h;
+}
+var PRE = "";
+function doPw(){
+  var pw = $("pw").value;
+  if(!pw){ showErr({message:"צריך לכתוב סיסמה."}); return; }
+  showOk("בודק...");
+  srv("apiTeamLogin", function(r){
+    PRE = r.pre; $("pw").value = "";
+    $("step1").hidden = true; $("step2").hidden = false; $("msg").hidden = true;
+    $("names").innerHTML = r.names.map(function(n){
+      return '<button class="chip" type="button" data-n="'+esc(n)+'" onclick="pickName(this)">'+esc(n)+'</button>'; }).join("");
+  }, [{password:pw, dev:DEV}]);
+}
+function pickName(b){
+  srv("apiTeamLogin", function(r){
+    SESSION = r.s;
+    try{ localStorage.setItem(KS, r.s); localStorage.setItem(KPLAN, r.s); }catch(e){}
+    boot();
+  }, [{pre:PRE, name:b.dataset.n, dev:DEV}]);
+}
+function askLink(){
+  var v = $("em").value.trim(), m = $("msg2");
+  if(!v){ m.hidden = false; m.className = "msg err"; m.textContent = "צריך לכתוב כתובת מייל."; return; }
+  m.hidden = false; m.className = "msg ok"; m.textContent = "שולח...";
+  srv("apiRequestLink", function(r){ m.className = "msg ok"; m.textContent = r.msg; }, [v],
+      function(e){ m.className = "msg err"; m.textContent = e.message; });
+}
+function logout(){
+  srv("apiLogout", function(){}, [auth()], function(){});
+  try{ localStorage.removeItem(KT); }catch(e){}
+  TOKEN = ""; endSession();
+}
+
+/* ── מסגרת ─────────────────────────────────────────────────── */
+function render(){
+  var tabs = [["new","תרגול חדש"],["mine","התרגולים שלי"]];
+  if(ME.approver){ tabs.push(["review","לאישור"]); tabs.push(["boger","בוגר סביון"]); }
+  if(ME.mahalach) tabs.push(["mahalach","המהלך השנתי"]);
+  if(ME.approver) tabs.push(["tichnun","תכנון השבועות ↗"]);
+  if(ME.manager) tabs.push(["usage","שימוש"]);
+  if(ME.manager) tabs.push(["settings","הגדרות"]);
+  var h = '<div class="top"><h1>מרחב השפה הקשובה</h1><span class="gap"></span><a class="who" href="./">→ לאתר</a><span class="who">'+esc(ME.name)+'</span><button class="btn3" onclick="logout()">יציאה</button></div>' +
+    '<div class="tabs'+(tabs.length>4?' many':'')+'" role="tablist">' + tabs.map(function(t){
+      var n = (t[0] === "review" && ME.pending) ? '<span class="n">'+ME.pending+'</span>' : "";
+      return '<button role="tab" aria-selected="'+(TAB===t[0])+'" onclick="go(\''+t[0]+'\')">'+t[1]+n+'</button>';
+    }).join("") + '</div><div id="pane"></div>';
+  $("app").innerHTML = h;
+  if(TAB === "new") renderNew();
+  else if(TAB === "mine") renderMine();
+  else if(TAB === "boger") renderBoger();
+  else if(TAB === "usage") renderUsage();
+  else if(TAB === "settings") renderSettings();
+  else if(TAB === "mahalach") renderMahalach();
+  else renderReview();
+}
+function go(t){
+  /* תכנון השבועות הוא דף באתר האתר עצמו: נפתח בלשונית חדשה, עם הטוקן האישי כדי שיהיה אפשר לערוך */
+  if(t === "tichnun"){ window.open("../tichnun.html" + (!SESSION && TOKEN ? "?t=" + encodeURIComponent(TOKEN) : ""), "_blank"); return; }
+  if(TAB === "new") syncForm(); TAB = t; render();
+}
+
+/* ── תרגול חדש ─────────────────────────────────────────────── */
+function doors(){ return (META && META.doors) || DOOR_FALLBACK; }
+function renderNew(){
+  var t = F.type, needFile = (t === "page" || t === "deck"), audio = t === "audio";
+  var h = '<div class="card"><h2>תרגול חדש לאתר</h2>' +
+    '<p class="sub">שתי דקות, ואחרי אישור של צוות מוביל השפה הקשובה הוא אצל כולם.</p>' +
+
+    '<div class="step"><h3>1. מה זה?</h3><div class="chips" role="group" aria-label="סוג התרגול">' +
+      TYPES.map(function(x){ return '<button type="button" class="chip" aria-pressed="'+(t===x.id)+'" onclick="setType(\''+x.id+'\')">'+x.label+'</button>'; }).join("") +
+    '</div></div>';
+
+  if(t){
+    if(audio){
+      h += '<div class="step"><h3>2. ההקלטה</h3>' +
+        '<div class="rec"><button type="button" class="big'+(REC.on?' on':'')+'" id="recBtn" onclick="toggleRec()">'+(REC.on?'עצירה':'להקליט עכשיו')+'</button>' +
+        '<span id="recTime">'+(REC.on?'מקליט...':'')+'</span>' +
+        (F.audio ? '<audio controls src="'+F.audio.url+'"></audio><span>'+esc(F.audio.label)+'</span>' : '') + '</div>' +
+        '<button type="button" class="btn2" onclick="$(&quot;audIn&quot;).click()">לבחור קובץ הקלטה</button><input type="file" id="audIn" accept="audio/*" capture hidden onchange="pickAudio(this)">' +
+        '<p class="hint">רק הקול של איש הצוות. הקלטות של תלמידים לא עולות לאתר.</p></div>';
+    } else if(needFile || t === "activity" || t === "write"){
+      h += '<div class="step"><h3>2. '+(needFile ? (t==="deck"?"קובץ המצגת (PDF)":"תמונות של הדף") : "קבצים, אם יש (לא חובה)")+'</h3>' +
+        '<button type="button" class="btn2" onclick="$(&quot;file&quot;).click()">בחירת קבצים</button><input type="file" id="file" multiple accept="'+(t==="deck"?"application/pdf":"image/*,application/pdf")+'" hidden onchange="addFiles(this)">' +
+        '<div id="files"></div>' +
+        (needFile ? '<p class="hint">אפשר כמה קבצים יחד, והם ייכנסו כתרגול אחד.</p>' : '') + '</div>';
+    }
+    if(t === "write" || t === "activity" || audio){
+      h += '<div class="step"><h3>'+(t==="activity"?"איך עושים":(audio?"הטקסט המלא של ההקלטה (לא חובה)":"הטקסט המלא להקראה"))+'</h3>' +
+        '<textarea id="ftext" maxlength="8000" placeholder="'+(t==="activity"?"כל שלב בשורה משלו":"מילה במילה, כדי שאפשר יהיה לקרוא אותו לכיתה")+'">'+esc(F.text)+'</textarea></div>';
+    }
+    h += '<div class="step"><h3>3. כמה מילים</h3>' +
+      '<label class="f">שם התרגול<input type="text" id="ftitle" maxlength="80" value="'+esc(F.title)+'"></label>' +
+      '<label class="f">מה עושים בו, במשפט אחד<input type="text" id="fexpl" maxlength="300" value="'+esc(F.explanation)+'"></label></div>' +
+
+      '<div class="step"><h3>4. לאן זה שייך?</h3><p class="hint">מה התרגול עוזר לעשות</p>' +
+      '<div class="doors" role="group" aria-label="דלת">' + doors().map(function(d){
+        return '<button type="button" class="chip" aria-pressed="'+(F.door===d.n)+'" onclick="setDoor('+d.n+')"><span class="dot" style="background:'+d.color+'"></span>'+esc(d.title)+'</button>';
+      }).join("") + '</div>' +
+      (F.door ? '<button type="button" class="pick" onclick="chooseTopic()"><span class="'+(F.topicId?'':'ph')+'">'+esc(F.topicTitle || 'נושא בתוך הדלת (לא חובה)')+'</span><span>▾</span></button>' : '') +
+      '<p class="hint">למי הוא מתאים (אפשר יותר מאחד)</p><div class="chips" role="group" aria-label="למי מתאים">' +
+        AUD.map(function(a){ return '<button type="button" class="chip" aria-pressed="'+(F.audience.indexOf(a.id)>=0)+'" onclick="toggleAud(\''+a.id+'\')">'+a.label+'</button>'; }).join("") + '</div>' +
+      '<div class="two"><label class="f">משך בדקות<input type="text" id="fmin" inputmode="numeric" maxlength="7" value="'+esc(F.minutes)+'" placeholder="למשל 10"></label><span></span></div>' +
+      '<p class="hint">שכבת גיל</p><div class="chips" role="group" aria-label="שכבת גיל">' +
+        LAYERS.map(function(l){ return '<button type="button" class="chip" aria-pressed="'+(F.layer===l)+'" onclick="setLayer(\''+l+'\')">'+l+'</button>'; }).join("") + '</div>' +
+      '<label class="f">שימו לב (לא חובה)<textarea id="fcaution" maxlength="600" placeholder="עיניים עצומות, מגע, שיתוף אישי מול הכיתה, אובדן, אוכל או אש? כתבו כאן מה המורה צריכה לדעת לפני שמתחילה.">'+esc(F.caution)+'</textarea></label>' +
+      '<label class="check"><input type="checkbox" id="fhide"'+(F.hideName?' checked':'')+' onchange="F.hideName=this.checked"> בלי השם שלי באתר (הצוות המוביל עדיין רואה מי העלה)</label>' +
+      '<label class="check"><input type="checkbox" id="fconsent"'+(F.consent?' checked':'')+' onchange="F.consent=this.checked"> אין בתרגול שם, קול או תמונה של תלמיד</label>' +
+      '</div>' +
+      '<div class="row"><button class="btn" id="send" onclick="submitNew()">שליחה לאישור</button></div>';
+  }
+  h += '<div class="msg" id="msg" hidden></div></div>';
+  $("pane").innerHTML = h;
+  renderFiles();
+}
+function syncForm(){
+  if($("ftitle")) F.title = $("ftitle").value;
+  if($("fexpl")) F.explanation = $("fexpl").value;
+  if($("fmin")) F.minutes = $("fmin").value;
+  if($("ftext")) F.text = $("ftext").value;
+  if($("fconsent")) F.consent = $("fconsent").checked;
+  if($("fcaution")) F.caution = $("fcaution").value;
+  if($("fhide")) F.hideName = $("fhide").checked;
+  Array.prototype.forEach.call(document.querySelectorAll("#files .dn"), function(inp){
+    var i = Number(inp.dataset.i); if(F.files[i]) F.files[i].name = inp.value;
+  });
+}
+function setType(t){ syncForm(); if(F.type !== t){ F.files = []; } F.type = t; renderNew(); }
+function setDoor(n){ syncForm(); if(F.door !== n){ F.topicId = ""; F.topicTitle = ""; } F.door = n; renderNew(); }
+function setLayer(l){ syncForm(); F.layer = F.layer === l ? "" : l; renderNew(); }
+function toggleAud(a){ syncForm(); var i = F.audience.indexOf(a); if(i>=0) F.audience.splice(i,1); else F.audience.push(a); renderNew(); }
+function chooseTopic(){
+  syncForm();
+  var list = ((META && META.topics) || []).filter(function(t){ return t.door === F.door; });
+  var h = '<div class="opt" onclick="setTopic(\'\',\'\')">בלי נושא מסוים</div>';
+  list.forEach(function(t){
+    h += '<div class="opt" onclick="setTopic(\''+esc(t.id)+'\',\''+esc(t.title).replace(/'/g,"&#39;")+'\')">'+esc(t.title)+'</div>';
+  });
+  if(!list.length) h += '<p class="hint">רשימת הנושאים עוד נטענת, או שאין בדלת הזאת נושאים.</p>';
+  openSheet("נושא בתוך הדלת", h);
+}
+function setTopic(id, title){ F.topicId = id; F.topicTitle = title; closeSheet(); renderNew(); }
+
+/* ── קבצים: כל תמונה מוקטנת ל-1600px בדפדפן, וכך גם יורד ממנה ה-EXIF ── */
+function readOne(f, cb){
+  if(f.type === "application/pdf"){
+    if(f.size > 12*1024*1024){ cb(null, 'הקובץ "'+f.name+'" גדול מדי (מעל 12 מגה).'); return; }
+    var r = new FileReader();
+    r.onerror = function(){ cb(null, 'לא הצלחתי לקרוא את "'+f.name+'".'); };
+    r.onload = function(){ cb({b64:r.result.split(",")[1], mime:"application/pdf", name:"", file:f.name, prev:""}); };
+    r.readAsDataURL(f); return;
+  }
+  var r2 = new FileReader();
+  r2.onerror = function(){ cb(null, 'לא הצלחתי לקרוא את "'+f.name+'".'); };
+  r2.onload = function(){
+    var img = new Image();
+    img.onerror = function(){ cb(null, 'הקובץ "'+f.name+'" אינו תמונה תקינה.'); };
+    img.onload = function(){
+      var max = 1600, w = img.width, h = img.height;
+      if(w > max || h > max){ var s = Math.min(max/w, max/h); w = Math.round(w*s); h = Math.round(h*s); }
+      var c = document.createElement("canvas"); c.width = w; c.height = h;
+      c.getContext("2d").drawImage(img, 0, 0, w, h);
+      var d = c.toDataURL("image/jpeg", 0.86);
+      cb({b64:d.split(",")[1], mime:"image/jpeg", name:"", file:f.name, prev:d});
+    };
+    img.src = r2.result;
+  };
+  r2.readAsDataURL(f);
+}
+function readMany(list, done){
+  var out = [], errs = [], i = 0;
+  (function next(){
+    if(i >= list.length) return done(out, errs);
+    readOne(list[i++], function(o, err){ if(o) out.push(o); else if(err) errs.push(err); next(); });
+  })();
+}
+function addFiles(inp){
+  syncForm();
+  var list = Array.prototype.slice.call(inp.files || []); inp.value = "";
+  if(!list.length) return;
+  var room = MAX_FILES - F.files.length;
+  if(room <= 0){ showErr({message:"אפשר עד "+MAX_FILES+" מסמכים בתרגול אחד."}); return; }
+  if(list.length > room) list = list.slice(0, room);
+  showOk("רגע, קורא את הקבצים...");
+  readMany(list, function(items, errs){
+    F.files = F.files.concat(items); renderFiles();
+    if(errs.length) showErr({message:errs.join(" ")});
+    else showOk(items.length === 1 ? "הקובץ נקלט." : items.length+" קבצים נקלטו.");
+  });
+}
+function renderFiles(){
+  var box = $("files"); if(!box) return;
+  box.innerHTML = F.files.map(function(f, i){
+    return '<div class="fl"><div class="th">'+(f.prev?'<img src="'+f.prev+'" alt="">':'PDF')+'</div>' +
+      '<div class="fx"><input type="text" class="dn" data-i="'+i+'" maxlength="80" aria-label="שם המסמך" placeholder="שם או דיוק, לא חובה" value="'+esc(f.name)+'">' +
+      '<span class="s">'+esc(f.file)+'</span></div>' +
+      '<div class="acts"><button type="button" aria-label="הסרת הקובץ" onclick="dropFile('+i+')">✕</button></div></div>';
+  }).join("");
+}
+function dropFile(i){ syncForm(); F.files.splice(i,1); renderFiles(); }
+
+/* ── הקלטה ───────────────────────────────────────────────────
+   הקלטה ישירה דרך המיקרופון. אם הדפדפן חוסם אותה בתוך הדף (קורה בתוך
+   מסגרת של Apps Script), נשארת הבחירה בקובץ, שבטלפון פותחת את המקליט. */
+var REC = {on:false, mr:null, chunks:[], t0:0, timer:null};
+function toggleRec(){
+  syncForm();
+  if(REC.on){ REC.mr.stop(); return; }
+  if(!navigator.mediaDevices || !window.MediaRecorder){ notify('הדפדפן הזה לא מאפשר להקליט מתוך הדף. אפשר ללחוץ על "לבחור קובץ הקלטה", ובטלפון זה פותח את המקליט.'); return; }
+  navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
+    REC.chunks = []; REC.mr = new MediaRecorder(stream);
+    REC.mr.ondataavailable = function(e){ if(e.data.size) REC.chunks.push(e.data); };
+    REC.mr.onstop = function(){
+      stream.getTracks().forEach(function(t){ t.stop(); });
+      clearInterval(REC.timer); REC.on = false;
+      var type = REC.mr.mimeType || "audio/webm";
+      setAudio(new Blob(REC.chunks, {type:type}), "הקלטה מהדף", type.indexOf("mp4")>=0 ? "m4a" : "webm");
+    };
+    REC.mr.start(); REC.on = true; REC.t0 = Date.now();
+    renderNew();
+    REC.timer = setInterval(function(){ var s = Math.floor((Date.now()-REC.t0)/1000);
+      if($("recTime")) $("recTime").textContent = "מקליט " + Math.floor(s/60) + ":" + ("0"+s%60).slice(-2); }, 500);
+  }).catch(function(){
+    notify('אין גישה למיקרופון מתוך הדף. אפשר ללחוץ על "לבחור קובץ הקלטה", ובטלפון זה פותח את המקליט.');
+  });
+}
+function pickAudio(inp){
+  syncForm();
+  var f = inp.files && inp.files[0]; inp.value = "";
+  if(!f) return;
+  var ext = (f.name.split(".").pop() || "m4a").toLowerCase();
+  setAudio(f, f.name, ext);
+}
+function setAudio(blob, label, ext){
+  if(blob.size > MAX_AUDIO_MB*1024*1024){ showErr({message:"ההקלטה גדולה מ-"+MAX_AUDIO_MB+" מגה."}); return; }
+  var r = new FileReader();
+  r.onload = function(){
+    F.audio = {b64:r.result.split(",")[1], mime:blob.type || "audio/mp4", ext:ext, label:label, url:URL.createObjectURL(blob)};
+    renderNew(); showOk("ההקלטה נקלטה. אפשר להאזין לה לפני השליחה.");
+  };
+  r.readAsDataURL(blob);
+}
+
+/* ── שליחה ── מסמך אחרי מסמך. כשלון באמצע משאיר את מה שעלה וממשיך משם. */
+function formObj(){
+  return {type:F.type, title:F.title, explanation:F.explanation, door:F.door, topicId:F.topicId,
+          audience:F.audience, minutes:F.minutes, layer:F.layer, text:F.text, caution:F.caution, hideName:F.hideName, consent:F.consent,
+          hasFiles: F.files.length > 0 || !!F.audio};
+}
+function uploads(){
+  var list = F.files.slice();
+  if(F.audio) list.push({b64:F.audio.b64, mime:F.audio.mime, ext:F.audio.ext, name:"", file:F.audio.label});
+  return list;
+}
+function submitNew(){
+  syncForm();
+  var t = F.type;
+  if((t === "page" || t === "deck") && !F.files.length && !F.group.done){ showErr({message:"עוד לא נבחרו קבצים."}); return; }
+  if(t === "audio" && !F.audio && !F.group.done){ showErr({message:"עוד אין הקלטה."}); return; }
+  if(F.group.id) return uploadNext();
+  busy(true, "בודק...");
+  srv("apiAddStart", function(r){
+    F.group.id = r.groupId;
+    if(r.written) return finishNew();
+    uploadNext();
+  }, [auth(), formObj()]);
+}
+function uploadNext(){
+  var list = uploads();
+  if(!list.length) return finishNew();
+  var f = list[0], n = F.group.done + 1, total = F.group.done + list.length;
+  busy(true, "מעלה "+n+" מתוך "+total+"...");
+  showOk("מעלה "+n+" מתוך "+total+". לא לסגור את הדף.");
+  srv("apiAddDoc", function(){
+    if(F.files.length) F.files.shift(); else F.audio = null;
+    F.group.done++; renderFiles(); uploadNext();
+  }, [auth(), F.group.id, formObj(), {b64:f.b64, mime:f.mime, ext:f.ext||"", name:f.name, order:n}],
+  function(e){
+    busy(false);
+    var pre = F.group.done ? (F.group.done === 1 ? "קובץ אחד כבר עלה ונשמר. " : F.group.done+" קבצים כבר עלו ונשמרו. ") : "";
+    showErr({message: pre + (e && e.message ? e.message : String(e)) + ' לחיצה על "המשך השליחה" תמשיך מהקובץ הבא.'});
+  });
+}
+function finishNew(){
+  srv("apiSubmitDone", function(){}, [auth(), F.group.id], function(){});
+  newForm();
+  renderNew();
+  notify("התרגול נשלח לצוות מוביל השפה הקשובה. כשמישהי מהן תאשר, הוא יופיע באתר, ותקבלו על כך מייל.", {title:"נשלח, תודה!"});
+}
+
+/* ── התרגולים שלי ─────────────────────────────────────────── */
+var MINE = [];
+function statusPill(s){
+  if(s === "פורסם") return '<span class="pill live">פורסם</span>';
+  if(s === "הוחזר") return '<span class="pill back">הוחזר עם הערה</span>';
+  return '<span class="pill wait">ממתין לאישור</span>';
+}
+function thumb(r){
+  var d = (r.docs || []).filter(function(x){ return x.img; })[0];
+  return d ? '<img class="th" src="'+esc(d.img)+'" alt="" loading="lazy">' : '<span class="th">'+esc(r.typeLabel || "")+'</span>';
+}
+function renderMine(){
+  $("pane").innerHTML = '<div class="card"><h2>'+(ME.manager?"כל התרגולים של הצוות":"התרגולים שלי")+'</h2><div id="mine">רגע...</div><div class="msg" id="msg" hidden></div></div>';
+  srv("apiMine", function(rows){
+    MINE = rows;
+    if(!rows.length){ $("mine").innerHTML = '<p class="hint">עוד לא העלית תרגולים.</p>'; return; }
+    $("mine").innerHTML = rows.map(function(r){
+      return '<div class="item">'+thumb(r)+'<div class="bd">' +
+        '<span class="t">'+esc(r.title)+'</span>' +
+        '<span class="s">'+esc(r.typeLabel)+' · '+esc(r.ts)+(r.mine?'':' · '+esc(r.by))+'</span>' +
+        '<span>'+statusPill(r.status)+(r.status==="פורסם"&&r.approvedBy?' <span class="s">אושר על ידי '+esc(r.approvedBy)+'</span>':'')+'</span>' +
+        (r.status==="הוחזר"&&r.note ? '<div class="note"><b>'+esc(r.approvedBy)+':</b> '+esc(r.note)+'</div>' : '') +
+        '<div class="acts"><button class="btn3" onclick="editOne(\''+r.id+'\')">'+(r.status==="הוחזר"?"תיקון ושליחה מחדש":"עריכה")+'</button>' +
+        '<button class="btn3" onclick="delOne(\''+r.id+'\')">הסרה</button></div>' +
+        '</div></div>';
+    }).join("");
+  }, [auth()]);
+}
+function mineById(id){ return MINE.filter(function(x){ return x.id === id; })[0]; }
+function editOne(id){
+  var r = mineById(id); if(!r) return;
+  var back = r.mine && r.status !== "ממתין לאישור";
+  var h = '<label class="f">שם התרגול<input type="text" id="eT" value="'+esc(r.title)+'"></label>' +
+    '<label class="f">מה עושים בו, במשפט אחד<input type="text" id="eE" value="'+esc(r.explanation)+'"></label>' +
+    ((r.type==="write"||r.type==="activity"||r.type==="audio") ? '<label class="f">'+(r.type==="activity"?"איך עושים":"הטקסט המלא")+'<textarea id="eX">'+esc(r.text)+'</textarea></label>' : '') +
+    '<label class="f">משך בדקות<input type="text" id="eM" value="'+esc(r.minutes)+'"></label>' +
+    '<label class="f">שימו לב<textarea id="eC" maxlength="600">'+esc(r.caution||'')+'</textarea></label>' +
+    '<label class="check"><input type="checkbox" id="eH"'+(r.hideName?' checked':'')+'> בלי השם באתר</label>' +
+    (!r.mine ? '<p class="hint">'+esc(r.by)+' תקבל מייל עם מה ששונה, ובאתר ייכתב שהתרגול נערך על ידך.</p>' : '') +
+    (r.docs.length ? '<p class="hint">הקבצים: '+r.docs.length+'. להסרת קובץ, הסירו את התרגול והעלו אותו מחדש.</p>' : '') +
+    (back ? '<p class="warn">שמירה תחזיר את התרגול לאישור של הצוות המוביל.</p>' : '') +
+    '<div class="msg" id="emsg" hidden></div>' +
+    '<div class="row"><button class="btn" onclick="saveOne(\''+id+'\')">'+(back?"שמירה ושליחה לאישור":"שמירה")+'</button>' +
+    '<button class="btn3" onclick="closeSheet()">ביטול</button></div>';
+  openSheet("עריכת תרגול", h);
+}
+function saveOne(id){
+  var r = mineById(id);
+  var f = {title:$("eT").value, explanation:$("eE").value, minutes:$("eM").value, caution:$("eC").value, hideName:$("eH").checked};
+  if($("eX")) f.text = $("eX").value;
+  srv("apiUpdate", function(res){ closeSheet(); renderMine();
+    notify(res.pending ? "נשמר, והתרגול חזר לאישור." : "השינוי נשמר."); }, [auth(), id, f]);
+}
+function delOne(id){
+  askConfirm("התרגול יורד מהאתר. הקבצים נשארים בדרייב ואפשר להחזיר אותם.", function(){
+    srv("apiDelete", function(){ renderMine(); notify("התרגול הוסר."); }, [auth(), id]);
+  }, {title:"להסיר את התרגול?", yes:"להסיר"});
+}
+
+/* ── לאישור ─────────────────────────────────────────────────── */
+var PEND = [];
+function renderReview(){
+  $("pane").innerHTML = '<div class="card"><h2>ממתינים לאישור</h2><p class="sub" id="rvSub">רגע...</p><div id="rv"></div><div class="msg" id="msg" hidden></div>' +
+    (ME.manager ? '<div class="row"><button class="btn3" onclick="showLinks()">הקישורים האישיים של הצוות המוביל</button></div><div id="links"></div>' : '') + '</div>';
+  srv("apiPending", function(rows){
+    PEND = rows;
+    var others = rows.filter(function(r){ return !r.mine; }).length;
+    ME.pending = others;
+    var tb = document.querySelectorAll('.tabs button')[2];
+    if(tb) tb.innerHTML = 'לאישור' + (others ? '<span class="n">'+others+'</span>' : '');
+    $("rvSub").textContent = rows.length ? (rows.length+" תרגולים חדשים מהצוות · כל אחת מהצוות המוביל יכולה לאשר") : "אין כרגע תרגולים שממתינים.";
+    $("rv").innerHTML = rows.map(rvCard).join("");
+  }, [auth()]);
+}
+function rvCard(r){
+  var door = doors().filter(function(d){ return d.n === r.door; })[0];
+  var aud = (r.audience||[]).map(function(a){ return (AUD.filter(function(x){return x.id===a;})[0]||{}).label; }).filter(Boolean);
+  var prev = (r.docs||[]).map(function(d){
+    if(d.audio) return '<audio controls preload="none" src="'+esc(d.audio)+'"></audio>';
+    if(d.kind === "מצגת") return '<a href="'+esc(d.file)+'" target="_blank" rel="noopener">פתיחת המצגת</a>';
+    return '<img src="'+esc(d.img)+'" alt="'+esc(d.name||r.title)+'" loading="lazy">';
+  }).join("");
+  var isAudio = (r.docs||[]).some(function(d){ return d.audio; });
+  return '<div class="rv" id="rv_'+r.id+'">' +
+    '<span class="hint">'+esc(r.typeLabel)+(r.minutes?' · '+esc(r.minutes)+' דק׳':'')+'</span>' +
+    '<span class="t" style="font-family:Rubik,sans-serif;font-weight:700;font-size:18px">'+esc(r.title)+'</span>' +
+    '<span class="s">מאת '+esc(r.by)+' · '+esc(r.ts)+'</span>' +
+    '<p style="margin:0">'+esc(r.explanation)+'</p>' +
+    '<div class="tags">'+(door?'<span class="tag">'+esc(door.title)+'</span>':'')+(r.topicTitle?'<span class="tag">'+esc(r.topicTitle)+'</span>':'') +
+      aud.map(function(a){ return '<span class="tag">'+a+'</span>'; }).join("")+(r.layer?'<span class="tag">'+esc(r.layer)+'</span>':'')+'</div>' +
+    (prev ? '<div class="prev">'+prev+'</div>' : '') +
+    (r.text ? '<div class="text">'+esc(r.text)+'</div>' : '') +
+    (r.mine ? '<p class="warn">זה תרגול שהעלית. מישהי אחרת מהצוות המוביל תאשר אותו.</p>' :
+      '<h3 style="font-size:16px">לפני שמאשרים</h3>' +
+      '<label class="check"><input type="checkbox" class="c1" onchange="rvReady(\''+r.id+'\')"> '+(isAudio?'הקשבתי עד הסוף, ואין שם או קול של תלמיד':'עברתי על הכל, ואין שם, קול או תמונה של תלמיד')+'</label>' +
+      '<label class="check"><input type="checkbox" class="c2" onchange="rvReady(\''+r.id+'\')"> הדלת והנושא מתאימים</label>' +
+      '<label class="check"><input type="checkbox" class="c3" onchange="rvReady(\''+r.id+'\')"> בדקתי: האם יש כאן עיניים עצומות, מגע, שיתוף אישי מול הכיתה, אובדן, אוכל או אש. אם כן, יש "שימו לב"</label>' +
+      '<label class="f">שימו לב (מה המורה צריכה לדעת לפני שמתחילה)<textarea class="caution" maxlength="600">'+esc(r.caution||'')+'</textarea></label>' +
+      '<label class="f">למה זה עובד (שורה אחת עם מקור, אפשר להשלים אחר כך)<input type="text" class="why" maxlength="300"></label>' +
+      '<div class="row"><button class="btn ok" disabled onclick="approve(\''+r.id+'\')">אישור ופרסום</button>' +
+      '<button class="btn2" onclick="giveBack(\''+r.id+'\')">החזרה עם הערה</button></div>') +
+  '</div>';
+}
+function rvReady(id){
+  var el = $("rv_"+id);
+  el.querySelector(".ok").disabled = !(el.querySelector(".c1").checked && el.querySelector(".c2").checked && el.querySelector(".c3").checked);
+}
+function approve(id){
+  var el = $("rv_"+id);
+  var d = {approve:true, checks:{clean:el.querySelector(".c1").checked, fit:el.querySelector(".c2").checked, care:el.querySelector(".c3").checked}, why:el.querySelector(".why").value, caution:el.querySelector(".caution").value};
+  el.querySelector(".ok").disabled = true;
+  srv("apiDecide", function(){ renderReview(); showOk("פורסם באתר. מי שהעלה קיבל מייל."); }, [auth(), id, d],
+      function(e){ rvReady(id); showErr(e); });
+}
+function giveBack(id){
+  askText("מה הייתי מציעה? ההערה תישלח במייל למי שהעלה, והתרגול יחזור אליו. עדיף כשאלה ולא כתיקון.", "מה דעתך ש...?", function(v){
+    if(!v.trim()){ notify("צריך לכתוב הערה."); return; }
+    srv("apiDecide", function(){ renderReview(); showOk("הוחזר עם הערה."); }, [auth(), id, {approve:false, note:v}]);
+  }, {title:"החזרה עם הערה", yes:"החזרה"});
+}
+
+/* ── שיוך לבוגר סביון ──────────────────────────────────────────
+   שחף וצוות מוביל השפה הקשובה עוברות על הטיוטה. נושא מאושר כששחף ועוד
+   אחת הסכימו על הנוסח העדכני; שינוי מאפס את ההסכמות. */
+var BG = null, BG_FILTER = "todo";
+function catOf(n){ return BG.cats.filter(function(c){ return c.n === n; })[0]; }
+function itemLabel(k){ var a = k.split("-"), c = catOf(Number(a[0])); return c ? {cat:c, text:c.items[Number(a[1])-1]} : null; }
+function renderBoger(){
+  $("pane").innerHTML = '<div class="card"><h2>שיוך התרגולים לבוגר סביון</h2>' +
+    '<p class="sub">לכל נושא באתר הוצע לאילו חלקים והיגדים של בוגר סביון הוא שייך, כדי שמורה תוכל לחפש תרגול גם לפי הפאזל. ' +
+    'עוברים על הכרטיסים: "מסכימה" אם מתאים, או "לשנות". נושא מאושר כשחן מסכימה, או כששחף ועוד אחת מהצוות המוביל מסכימות, ורק אז הוא מופיע באתר.</p>' +
+    '<div id="bgHead"></div><div class="chips" role="group" aria-label="סינון">' +
+      [["todo","עוד לא עברתי"],["all","הכל"],["ok","מאושרים"]].map(function(f){
+        return '<button type="button" class="chip" aria-pressed="'+(BG_FILTER===f[0])+'" onclick="bgFilter(\''+f[0]+'\')">'+f[1]+'</button>'; }).join("") +
+    '</div><div class="msg" id="msg" hidden></div>' +
+    (ME.manager ? '<div class="row"><button class="btn2" onclick="bgInvite()">שליחת מייל לחן, עדי, אילנה ושני עם הקישור האישי של כל אחת</button></div>' : '') +
+    '<div id="bgList">רגע...</div></div>';
+  srv("apiBogerReview", function(d){ BG = d; bgDraw(); }, [auth()]);
+}
+function bgInvite(){
+  askConfirm("כל אחת תקבל מייל בשמך, עם הקישור האישי שלה שנפתח ישר על הלשונית הזאת. תשובה למייל תגיע אלייך. מי שכבר קיבלה, לא תקבל שוב.", function(){
+    showOk("שולח...");
+    srv("apiInviteBoger", function(r){
+      notify((r.sent.length ? "נשלח אל: " + r.sent.join(", ") + "." : "") +
+             (r.skipped.length ? (r.sent.length ? "\n" : "") + "כבר קיבלו קודם: " + r.skipped.join(", ") + "." : ""), {title:"נשלח"});
+    }, [auth()]);
+  }, {title:"לשלוח את המיילים?", yes:"לשלוח"});
+}
+function bgFilter(f){ BG_FILTER = f; renderBoger(); }
+function bgDraw(){
+  var rows = BG.rows, ok = rows.filter(function(r){ return r.approved; }).length, mine = rows.filter(function(r){ return r.mine; }).length;
+  $("bgHead").innerHTML = '<p class="sub"><b>'+ok+'</b> מאושרים מתוך '+rows.length+' · עברת על '+mine+'</p>' +
+    '<div class="bar" role="img" aria-label="'+ok+' מאושרים מתוך '+rows.length+'"><i style="width:'+Math.round(ok*100/Math.max(1,rows.length))+'%"></i></div>';
+  var list = rows.filter(function(r){ return BG_FILTER === "all" || (BG_FILTER === "ok" ? r.approved : !r.mine); });
+  $("bgList").innerHTML = list.length ? list.map(bgCard).join("") :
+    '<p class="hint">'+(BG_FILTER==="todo" ? "עברת על הכל. תודה!" : "אין כאן נושאים.")+'</p>';
+}
+function bgCard(r){
+  var props = r.items.map(function(k){ var x = itemLabel(k); if(!x) return "";
+    return '<div class="prop"><span class="dot" style="background:'+x.cat.color+'"></span><span><b>'+esc(x.cat.title)+':</b> '+esc(x.text)+'</span></div>'; }).join("");
+  return '<div class="bg'+(r.approved?' ok':'')+'" id="bg_'+r.topicId+'">' +
+    '<span class="t" style="font-family:Rubik,sans-serif;font-weight:700;font-size:17px">'+esc(r.title)+'</span>' +
+    '<p class="ex">'+r.count+' תרגולים, למשל: '+esc(r.examples.join(" · "))+'</p>' +
+    '<div class="props">'+props+'</div>' +
+    '<span class="who">'+(r.agreed.length ? 'הסכימו: '+esc(r.agreed.join(", ")) : 'עוד אף אחת לא הסכימה')+(r.approved ? ' · <span class="done">מאושר</span>' : '')+'</span>' +
+    r.comments.map(function(c){ return '<div class="cm"><b>'+esc(c.by)+'</b> '+esc(c.ts)+': '+esc(c.text)+'</div>'; }).join("") +
+    '<div class="row">' +
+      (r.mine ? '<span class="done">✓ הסכמת</span>' : '<button class="btn" onclick="bgAgree(\''+r.topicId+'\')">מסכימה</button>') +
+      '<button class="btn2" onclick="bgChange(\''+r.topicId+'\')">לשנות</button>' +
+      '<button class="btn3" onclick="bgComment(\''+r.topicId+'\')">הערה</button>' +
+    '</div></div>';
+}
+function bgRow(id){ return BG.rows.filter(function(r){ return r.topicId === id; })[0]; }
+function bgAfter(){ srv("apiBogerReview", function(d){ BG = d; bgDraw(); }, [auth()]); }
+function bgAgree(id){
+  var r = bgRow(id);
+  srv("apiBogerAgree", function(res){ showOk('"'+r.title+'" נשמר'+(res.approved?', והנושא מאושר.':'.')); bgAfter(); },
+      [auth(), id, r.version], function(e){ showErr(e); bgAfter(); });
+}
+function bgChange(id){
+  var r = bgRow(id), on = {}; r.items.forEach(function(k){ on[k] = 1; });
+  var h = '<p class="hint">מסמנים את ההיגדים שהנושא "'+esc(r.title)+'" מתרגל. אפשר כמה, מכמה חלקים.</p>';
+  BG.cats.forEach(function(c){
+    h += '<div class="bpart"><h4><span class="dot" style="background:'+c.color+'"></span>'+esc(c.title)+'</h4>' +
+      c.items.map(function(t, i){ var k = c.n+"-"+(i+1);
+        return '<label class="check" style="padding-top:4px"><input type="checkbox" class="bgk" value="'+k+'"'+(on[k]?' checked':'')+'> '+esc(t)+'</label>'; }).join("") + '</div>';
+  });
+  h += '<label class="f">למה (לא חובה)<input type="text" id="bgWhy" maxlength="300"></label>' +
+       '<div class="msg" id="emsg" hidden></div>' +
+       '<div class="row"><button class="btn" onclick="bgSave(\''+id+'\')">שמירת השינוי</button><button class="btn3" onclick="closeSheet()">ביטול</button></div>';
+  openSheet("שיוך: " + r.title, h);
+}
+function bgSave(id){
+  var r = bgRow(id);
+  var items = Array.prototype.map.call(document.querySelectorAll("#sheetBody .bgk:checked"), function(x){ return x.value; });
+  srv("apiBogerChange", function(){ closeSheet(); showOk('השיוך של "'+r.title+'" עודכן. ההסכמות של האחרות התאפסו, כדי שיעברו על הנוסח החדש.'); bgAfter(); },
+      [auth(), id, r.version, items, $("bgWhy").value]);
+}
+function bgComment(id){
+  var r = bgRow(id);
+  askText('הערה על "'+r.title+'". כל הצוות המוביל יראה אותה בכרטיס.', "", function(v){
+    srv("apiBogerComment", function(){ showOk("ההערה נשמרה."); bgAfter(); }, [auth(), id, v]);
+  }, {title:"הערה", yes:"שמירה"});
+}
+
+/* ── המהלך השנתי: חן משדכת תרגולים לכל שלב (4.10.2026, הכרעות שחף) ──
+   התרגולים נקראים ישירות מקובץ הנתונים של האתר ומהתוספות שפורסמו, ולכן מה
+   שרואים כאן הוא בדיוק מה שיש באתר. כל לחיצה נשמרת מיד ועולה לאתר. שמירה
+   שנכשלה מחזירה את השלב למצב האחרון שנשמר ואומרת את זה, כדי שהמסך לא ישקר. */
+var MH = null, MH_P = null, MH_STEP = 0, MH_FILTER = "all", MH_Q = "", MH_TOPIC = "";
+var MH_SAVE = {busy:false, again:null};
+var PK_BASE = "https://shahafgerda1.github.io/pinkas-savyon/v2/";
+var MH_ADDS = "https://script.google.com/macros/s/AKfycbwwr4eOX9jFACxB_nyTfk0k-wOOCTKozJE6SIRFRFNjcOZdcvSDWVX5QdmFerebVixoeg/exec?api=additions&v=2";
+var MONTH_LABEL = {9:"ספט׳",10:"אוק׳",11:"נוב׳",12:"דצמ׳",1:"ינו׳",2:"פבר׳",3:"מרץ",4:"אפר׳",5:"מאי",6:"יוני"};
+var PTYPE = {page:"דף להקרנה", activity:"פעילות", write:"תרגול כתוב", deck:"מצגת", audio:"הקלטה"};
+
+function mhCopy(st){ return {practices:st.practices.slice(), starter:st.starter, months:st.months.slice(), missing:!!st.missing, note:st.note||""}; }
+function mhColor(part){ var c = (MH.cats||[]).filter(function(x){ return x.n === part; })[0]; return c ? c.color : "#54078F"; }
+function mhStep(i){ return MH.steps.filter(function(s){ return s.i === i; })[0]; }
+
+function renderMahalach(){
+  if(MH && MH_P) return mhDraw();
+  $("pane").innerHTML = '<div class="card"><p class="sub">רגע, טוען את השלבים ואת כל התרגולים שבאתר...</p><div class="msg" id="msg" hidden></div></div>';
+  var need = (MH ? 0 : 1) + (MH_P ? 0 : 1), got = 0;
+  function one(){ if(++got === need) mhDraw(); }
+  if(!MH) srv("apiMahalach", function(d){ MH = d; MH.steps.forEach(function(s){ s._saved = mhCopy(s); }); one(); }, [auth()]);
+  if(!MH_P) mhLoadPinkas(one);
+}
+/* קובץ הנתונים של האתר בתג script, ואחריו התוספות שפורסמו (אותו JSONP שהאתר משתמש בו) */
+function mhLoadPinkas(cb){
+  var done = cb;
+  var s = document.createElement("script");
+  s.src = PK_BASE + "data-v2.js?d=" + new Date().toISOString().slice(0,13);
+  s.onload = function(){
+    var d = window.PINKAS;
+    if(!d || !d.practices){ return mhLoadFail(); }
+    MH_P = {byId:{}, list:[], topics:{}, doors:d.doors || []};
+    d.topics.forEach(function(t){ MH_P.topics[t.id] = t; });
+    /* נושא שמופיע פעמיים באותו שם נחשב אחד, בדיוק כמו topicAlias באתר */
+    MH_P.alias = {}; var firstByTitle = {};
+    d.topics.forEach(function(t){ if(!firstByTitle[t.title]) firstByTitle[t.title] = t.id; });
+    d.topics.forEach(function(t){ var f = firstByTitle[t.title]; MH_P.alias[t.id] = f; MH_P.alias[f] = f; });
+    d.practices.forEach(function(p){
+      var img = p.img || (p.docs && p.docs[0] && p.docs[0].img) || "";
+      mhPut({id:p.id, title:p.title||"", what:p.what||"", topic:p.topic, door:Number(p.door)||0, type:p.type,
+             img:img ? new URL(img, PK_BASE).href : "", note:p.note||"",
+             staff:(p.houses||[]).length === 1 && p.houses[0] === "צוות"});
+    });
+    window.__mhAdds = function(rows){
+      (rows||[]).forEach(function(a){
+        if(!a || !a.id || MH_P.byId[a.id]) return;
+        var t = MH_P.topics[a.topicId] || d.topics.filter(function(x){ return a.topicTitle && x.title === a.topicTitle; })[0];
+        var tid = t ? t.id : (a.topicId || "");
+        if(!t && tid) MH_P.topics[tid] = {id:tid, title:a.topicTitle || "מהצוות", door:Number(a.door)||0};
+        mhPut({id:a.id, title:a.title||"", what:a.explanation||"", topic:tid, door:Number(a.door)||0, type:a.type||"page",
+               img:a.img||"", note:a.note||"", staff:a.layer === "צוות", fromStaff:true});
+      });
+      /* התוספות מגיעות אחרי שהמסך כבר עלה: מעדכנים רק את הרשימות, בלי לגעת בשדות שבכתיבה */
+      if(TAB === "mahalach" && MH){ if(MH_STEP) mhRefresh(); else mhDrawList(); }
+    };
+    var a = document.createElement("script");
+    a.src = MH_ADDS + "&callback=__mhAdds";
+    document.body.appendChild(a);
+    done();   /* בלי תוספות המסך עובד, רק בלי מה שהצוות העלה */
+  };
+  s.onerror = mhLoadFail;
+  document.body.appendChild(s);
+}
+function mhPut(p){ MH_P.byId[p.id] = p; MH_P.list.push(p); }
+function mhLoadFail(){
+  $("pane").innerHTML = '<div class="card"><h2>לא הצלחתי לטעון את האתר</h2>' +
+    '<p class="sub">השלבים נשמרים בצד שלנו, אבל כדי לשדך צריך לראות את התרגולים, ואלה נטענים מאתר האתר. כדאי לבדוק את החיבור ולנסות שוב.</p>' +
+    '<div class="row"><button class="btn" onclick="MH_P=null;renderMahalach()">לנסות שוב</button></div></div>';
+}
+function mhDraw(){ if(MH_STEP) mhDrawStep(); else mhDrawList(); }
+
+/* ── רשימת השלבים ── */
+function mhStepLine(s){
+  var bits = [], n = s.practices.length;
+  if(n){
+    var st = s.starter && MH_P.byId[s.starter];
+    bits.push('<b>'+n+' תרגולים</b>' + (st ? ' · מתחילים ב"' + esc(st.title) + '"' : ''));
+  } else {
+    var k = mhSuggest(s).length;
+    bits.push('עוד לא בחרת' + (k ? ' · ' + k + ' הצעות מחכות' : ''));
+  }
+  if(s.months.length) bits.push(s.months.map(function(m){ return MONTH_LABEL[m]; }).join(", "));
+  if(s.missing) bits.push('<span class="tagW" style="margin:0">חסר תרגול</span>');
+  if(s.note) bits.push('יש הערה לצוות');
+  return bits.join(" · ");
+}
+function mhDrawList(){
+  var steps = MH.steps, done = steps.filter(function(s){ return s.practices.length; }).length;
+  var domains = []; steps.forEach(function(s){ if(domains.indexOf(s.domain) < 0) domains.push(s.domain); });
+  var chips = [["all","הכל"],["todo","עוד לא שודכו"]].concat(domains.map(function(d){ return [d, d]; }));
+  var list = steps.filter(function(s){ return MH_FILTER === "all" || (MH_FILTER === "todo" ? !s.practices.length : s.domain === MH_FILTER); });
+  var h = '<div class="card"><h2>המהלך השנתי: שידוך תרגולים מהאתר</h2>' +
+    '<p class="sub">לכל אחד מ-' + steps.length + ' השלבים של המהלך התרגולי השנתי בוחרים את התרגולים מהאתר שמתאימים לו, ואת החודשים שבהם מתרגלים אותו. ' +
+    'כל סימון עולה לאתר מיד. בשלב שעוד לא בחרת בו, האתר ממשיך להציג את ההצעה של היום.</p>' +
+    '<p class="sub"><b>' + done + '</b> שלבים שודכו מתוך ' + steps.length + '</p>' +
+    '<div class="bar" role="img" aria-label="' + done + ' שלבים שודכו מתוך ' + steps.length + '"><i style="width:' + Math.round(done*100/Math.max(1,steps.length)) + '%"></i></div>' +
+    '<div class="chips" role="group" aria-label="סינון">' + chips.map(function(c){
+      return '<button type="button" class="chip" aria-pressed="' + (MH_FILTER===c[0]) + '" onclick="mhFilter(\'' + esc(c[0]) + '\')">' + esc(c[1]) + '</button>'; }).join("") + '</div>' +
+    '<div class="msg" id="msg" hidden></div>' +
+    (ME.manager && !MH.invited ? '<div class="row"><button class="btn2" onclick="mhInvite()">שליחת מייל לחן עם הקישור האישי שלה ללשונית הזאת</button></div>' : '') +
+    '<div class="mhs">';
+  var lastDom = "";
+  list.forEach(function(s){
+    if(s.domain !== lastDom){ lastDom = s.domain;
+      h += '<h3 class="dom"><span class="dot" style="background:' + mhColor(s.part) + '"></span>' + esc(s.domain) + '</h3>'; }
+    h += '<a class="st" href="#" onclick="mhOpen(' + s.i + ');return false">' +
+      '<span class="num" style="background:' + mhColor(s.part) + '">' + s.i + '</span>' +
+      '<span class="bd"><span class="t">' + esc(s.title) + '</span><span class="s">' + mhStepLine(s) + '</span></span></a>';
+  });
+  if(!list.length) h += '<p class="hint">' + (MH_FILTER === "todo" ? "כל השלבים שודכו. תודה!" : "אין כאן שלבים.") + '</p>';
+  $("pane").innerHTML = h + '</div></div>';
+}
+function mhFilter(f){ MH_FILTER = f; mhDrawList(); }
+function mhOpen(i){ MH_STEP = i; MH_Q = ""; MH_TOPIC = ""; mhDrawStep(); window.scrollTo(0, 0); }
+function mhBack(){ MH_STEP = 0; mhDrawList(); window.scrollTo(0, 0); }
+function mhInvite(){
+  askConfirm("חן תקבל מייל בשמך, עם הקישור האישי שלה שנפתח ישר על הלשונית הזאת. תשובה למייל תגיע אלייך. המייל יוצא פעם אחת בלבד.", function(){
+    showOk("שולח...");
+    srv("apiInviteMahalach", function(r){ MH.invited = true; mhDrawList();
+      notify(r.sent ? "המייל לחן יצא." : "המייל כבר יצא קודם, ולא נשלח שוב.", {title:"נשלח"}); }, [auth()]);
+  }, {title:"לשלוח לחן?", yes:"לשלוח"});
+}
+
+/* ── שלב אחד ── */
+function mhSuggest(s){
+  var want = {}; s.topics.forEach(function(t){ want[t] = 1; want[MH_P.alias[t] || t] = 1; });
+  return MH_P.list.filter(function(p){ return (want[p.topic] || want[MH_P.alias[p.topic]]) && s.practices.indexOf(p.id) < 0; });
+}
+function mhRow(p, mode, k, n, s){
+  var thumb = p.img ? '<img class="th" src="' + esc(p.img) + '" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.visibility=\'hidden\'">'
+                    : '<span class="th">' + esc(PTYPE[p.type] || "") + '</span>';
+  var t = MH_P.topics[p.topic];
+  var sub = [PTYPE[p.type] || "", t ? t.title : ""].filter(Boolean).join(" · ") + (p.what ? ": " + p.what : "");
+  var tags = (s && s.starter === p.id ? '<span class="tagS">מתחילים כאן</span>' : '') +
+             (p.note ? '<span class="tagW">שימו לב</span>' : '') + (p.staff ? '<span class="tagS">לצוות</span>' : '');
+  var acts = mode === "add"
+    ? '<button type="button" class="add" onclick="mhAdd(\'' + p.id + '\')" aria-label="להוסיף את ' + esc(p.title) + '">+ להוסיף</button>'
+    : '<button type="button" class="star" aria-pressed="' + (s.starter === p.id) + '" onclick="mhStar(\'' + p.id + '\')" title="מתחילים בו" aria-label="מתחילים ב' + esc(p.title) + '">★</button>' +
+      '<button type="button" onclick="mhMove(\'' + p.id + '\',-1)"' + (k === 0 ? ' disabled' : '') + ' aria-label="להקדים">↑</button>' +
+      '<button type="button" onclick="mhMove(\'' + p.id + '\',1)"' + (k === n - 1 ? ' disabled' : '') + ' aria-label="לאחר">↓</button>' +
+      '<button type="button" onclick="mhRemove(\'' + p.id + '\')" aria-label="להסיר את ' + esc(p.title) + '">✕</button>';
+  return '<div class="pr' + (mode === "add" ? '' : ' ch') + (s && s.starter === p.id ? ' starter' : '') + '">' + thumb +
+    '<span class="bd"><a class="t" href="' + PK_BASE + '#/p/' + encodeURIComponent(p.id) + '" target="_blank" rel="noopener">' + esc(p.title) + '</a>' + tags +
+    '<span class="s">' + esc(sub) + '</span></span><span class="acts">' + acts + '</span></div>';
+}
+function mhDrawStep(){
+  var s = mhStep(MH_STEP), all = MH.steps, prev = mhStep(MH_STEP - 1), next = mhStep(MH_STEP + 1);
+  $("pane").innerHTML = '<div class="card">' +
+    '<div class="row"><button class="btn3" onclick="mhBack()">→ כל השלבים</button></div>' +
+    '<span class="sub" style="color:' + mhColor(s.part) + ';font-weight:700">שלב ' + s.i + ' מתוך ' + all.length + ' · ' + esc(s.domain) + '</span>' +
+    '<h2>' + esc(s.title) + '</h2>' +
+    '<div class="mh-status" id="mhStatus" role="status">' + (s.updated ? 'נשמר לאחרונה ' + esc(s.updated) + (s.by ? ' (' + esc(s.by) + ')' : '') : 'כל סימון כאן נשמר ועולה לאתר מיד.') + '</div>' +
+    '<div class="msg" id="msg" hidden></div>' +
+    '<div class="step"><h3>באילו חודשים מתרגלים את השלב</h3><div class="mon" id="mhMon"></div>' +
+      '<p class="hint">אפשר כמה חודשים. באתר, השלבים של החודש הנוכחי מופיעים בכריכה תחת "עכשיו במהלך השנתי".</p></div>' +
+    '<div class="step"><h3 id="mhChH"></h3><div id="mhCh"></div></div>' +
+    '<div class="step"><h3 id="mhSgH"></h3><div id="mhSg"></div></div>' +
+    '<div class="step"><h3>חיפוש בכל האתר</h3>' +
+      '<input type="text" id="mhq" placeholder="מילה מהשם או מההסבר, למשל נשימה" value="' + esc(MH_Q) + '" oninput="MH_Q=this.value;MH_TOPIC=\'\';mhResults()" autocomplete="off">' +
+      '<div class="row"><button class="btn3" onclick="mhPickTopic()">או לעבור על נושא שלם מהאתר</button></div>' +
+      '<div id="mhRes"></div></div>' +
+    '<div class="step"><h3>מה עוד</h3>' +
+      '<label class="check"><input type="checkbox" id="mhMiss"' + (s.missing ? ' checked' : '') + ' onchange="mhMissing(this.checked)"> חסר תרגול טוב לשלב הזה, צריך לכתוב אחד</label>' +
+      '<label class="f">הערה לצוות. תופיע באתר מעל התרגולים של השלב (לא חובה)<textarea id="mhNote" maxlength="600" onchange="mhNote()">' + esc(s.note) + '</textarea></label>' +
+      '<div class="row"><button class="btn2" onclick="mhNote()">שמירת ההערה</button></div></div>' +
+    '<nav class="mhnav" aria-label="שלבים">' +
+      (prev ? '<button class="btn3" onclick="mhOpen(' + prev.i + ')">→ ' + esc(prev.title) + '</button>' : '') +
+      (next ? '<button class="btn3" onclick="mhOpen(' + next.i + ')">' + esc(next.title) + ' ←</button>' : '') +
+    '</nav></div>';
+  mhRefresh();
+}
+function mhRefresh(){
+  var s = mhStep(MH_STEP); if(!s || !$("mhCh")) return;
+  $("mhMon").innerHTML = MH.months.map(function(m){
+    return '<button type="button" class="chip" aria-pressed="' + (s.months.indexOf(m) >= 0) + '" onclick="mhMonth(' + m + ')">' + MONTH_LABEL[m] + '</button>'; }).join("");
+  var n = s.practices.length;
+  $("mhChH").textContent = "התרגולים שבחרת לשלב (" + n + ")";
+  $("mhCh").innerHTML = n
+    ? '<p class="hint">★ מסמן את התרגול שמתחילים בו, והוא עולה לראש הרשימה. החיצים קובעים את הסדר שבו התרגולים מופיעים באתר. לחיצה על השם פותחת את התרגול באתר בלשונית חדשה.</p>' +
+      s.practices.map(function(id, k){
+        var p = MH_P.byId[id];
+        if(!p) return '<div class="pr ch"><span class="th">?</span><span class="bd"><span class="t">תרגול שכבר אינו באתר</span><span class="s">אולי הוסר או שונה. אפשר להסיר אותו מהשלב.</span></span>' +
+          '<span class="acts"><button type="button" onclick="mhRemove(\'' + esc(id) + '\')" aria-label="להסיר">✕</button></span></div>';
+        return mhRow(p, "ch", k, n, s); }).join("")
+    : '<p class="hint">עוד לא בחרת. מסמנים מתוך ההצעות או מחפשים למטה. עד שתבחרי, האתר מציג בשלב הזה את כל ההצעות.</p>';
+  var sg = mhSuggest(s);
+  $("mhSgH").textContent = "הצעות מהנושאים הקרובים באתר (" + sg.length + ")";
+  $("mhSg").innerHTML = sg.length ? sg.map(function(p){ return mhRow(p, "add", 0, 0, s); }).join("")
+    : '<p class="hint">' + (s.topics.length ? "כל ההצעות כבר בחירות שלך." : "לשלב הזה עוד אין נושא קרוב באתר. אפשר לחפש למטה, או לסמן שחסר תרגול.") + '</p>';
+  mhResults();
+}
+function mhResults(){
+  var s = mhStep(MH_STEP), box = $("mhRes"); if(!box) return;
+  var q = MH_Q.trim(), list = [], head = "";
+  if(MH_TOPIC){
+    var t = MH_P.topics[MH_TOPIC];
+    list = MH_P.list.filter(function(p){ return p.topic === MH_TOPIC; });
+    head = '<p class="hint">הנושא "' + esc(t ? t.title : "") + '" (' + list.length + ' תרגולים) · <a href="#" onclick="MH_TOPIC=\'\';mhResults();return false">ניקוי</a></p>';
+  } else if(q.length >= 2){
+    var lq = q.toLowerCase();
+    list = MH_P.list.filter(function(p){ var t = MH_P.topics[p.topic];
+      return (p.title + " " + p.what + " " + (t ? t.title : "")).toLowerCase().indexOf(lq) >= 0; });
+    head = '<p class="hint">' + (list.length ? list.length + ' תרגולים' + (list.length > 40 ? ', מוצגים 40 הראשונים. אפשר לדייק את החיפוש' : '') : 'לא נמצא תרגול עם "' + esc(q) + '"') + '</p>';
+    list = list.slice(0, 40);
+  }
+  box.innerHTML = head + list.map(function(p){
+    return s.practices.indexOf(p.id) >= 0
+      ? mhRow(p, "add", 0, 0, s).replace(/<button type="button" class="add"[^>]*>\+ להוסיף<\/button>/, '<span class="tagS">כבר בשלב</span>')
+      : mhRow(p, "add", 0, 0, s); }).join("");
+}
+function mhPickTopic(){
+  var h = "", dl = MH_P.doors.length ? MH_P.doors : doors();
+  dl.forEach(function(d){
+    var ts = Object.keys(MH_P.topics).map(function(k){ return MH_P.topics[k]; }).filter(function(t){
+      return Number(t.door) === d.n && MH_P.list.some(function(p){ return p.topic === t.id; }); });
+    if(!ts.length) return;
+    h += '<h4 style="margin:12px 0 4px;font-family:Rubik,sans-serif;color:' + d.color + '">' + esc(d.title) + '</h4>' +
+      ts.map(function(t){ var c = MH_P.list.filter(function(p){ return p.topic === t.id; }).length;
+        return '<div class="opt" onclick="mhTopic(\'' + esc(t.id) + '\')">' + esc(t.title) + ' <span class="hint" style="margin-inline-start:6px">(' + c + ')</span></div>'; }).join("");
+  });
+  openSheet("לבחור נושא מהאתר", h);
+}
+function mhTopic(id){ closeSheet(); MH_TOPIC = id; MH_Q = ""; if($("mhq")) $("mhq").value = ""; mhResults(); $("mhRes").scrollIntoView({block:"start"}); }
+
+/* ── פעולות. כל אחת משנה את השלב, מציירת, ושומרת. ── */
+function mhAct(fn){ var s = mhStep(MH_STEP); fn(s); mhRefresh(); mhSave(s); }
+function mhAdd(id){ mhAct(function(s){ if(s.practices.indexOf(id) < 0) s.practices.push(id); }); }
+function mhRemove(id){ mhAct(function(s){ s.practices = s.practices.filter(function(x){ return x !== id; }); if(s.starter === id) s.starter = ""; }); }
+function mhMove(id, d){ mhAct(function(s){ var a = s.practices, k = a.indexOf(id), j = k + d;
+  if(k < 0 || j < 0 || j >= a.length) return; a[k] = a[j]; a[j] = id; }); }
+/* התרגול שמתחילים בו עולה לראש הרשימה, כי כך הוא מופיע באתר */
+function mhStar(id){ mhAct(function(s){ s.starter = s.starter === id ? "" : id;
+  if(s.starter) s.practices = [id].concat(s.practices.filter(function(x){ return x !== id; })); }); }
+function mhMonth(m){ mhAct(function(s){ var k = s.months.indexOf(m);
+  if(k >= 0) s.months.splice(k, 1); else s.months.push(m);
+  s.months.sort(function(a, b){ return MH.months.indexOf(a) - MH.months.indexOf(b); }); }); }
+function mhMissing(v){ mhAct(function(s){ s.missing = !!v; }); }
+function mhNote(){ var el = $("mhNote"); if(!el) return; var s = mhStep(MH_STEP), v = el.value.trim();
+  if(v === (s.note || "")) return; s.note = v; mhSave(s); }
+function mhStatus(t, bad){ var el = $("mhStatus"); if(!el) return; el.textContent = t; el.className = "mh-status" + (bad ? " err" : ""); }
+function mhSave(s){
+  if(MH_SAVE.busy){ MH_SAVE.again = s; mhStatus("שומר..."); return; }
+  MH_SAVE.busy = true; mhStatus("שומר...");
+  var data = mhCopy(s);
+  srv("apiMahalachSave", function(r){
+    MH_SAVE.busy = false; s._saved = data; s.by = r.by; s.updated = r.updated;
+    if(MH_SAVE.again){ var n = MH_SAVE.again; MH_SAVE.again = null; return mhSave(n); }
+    if(MH_STEP === s.i) mhStatus("נשמר ועלה לאתר · " + r.updated);
+  }, [auth(), s.i, data], function(e){
+    MH_SAVE.busy = false; MH_SAVE.again = null;
+    var b = s._saved || {practices:[], starter:"", months:[], missing:false, note:""};
+    s.practices = b.practices.slice(); s.starter = b.starter; s.months = b.months.slice(); s.missing = b.missing; s.note = b.note;
+    /* מה שנכתב בתיבת ההערה נשאר בה, כדי שאפשר יהיה לשמור שוב ולא לכתוב מחדש */
+    if(MH_STEP === s.i){ mhRefresh(); if($("mhMiss")) $("mhMiss").checked = s.missing; }
+    mhStatus("לא נשמר: " + (e && e.message ? e.message : e) + " השלב חזר למצב האחרון שנשמר, אפשר לנסות שוב.", true);
+  });
+}
+
+/* ── שימוש באתר, לשחף בלבד (4.10.2026) ──────────────────────
+   מי נכנס/ה לאתר מהקישור האישי, מתי וכמה, ומי לא נכנס/ה בכלל.
+   הקישור לאתר נשלח רק מכאן ורק בלחיצה. */
+var USE = null, USE_F = "teach";
+function isTeacher(p){ return /מור|מחנכ|רכז|גננ/.test(p.role || ""); }
+function heDay(iso){ if(!iso) return ""; var d = new Date(iso); return d.getDate()+"."+(d.getMonth()+1)+"."+d.getFullYear(); }
+function renderUsage(){
+  $("pane").innerHTML = '<div class="card"><h2>מי משתמש/ת באתר</h2><div id="use">רגע, סופר...</div><div class="msg" id="msg" hidden></div></div>';
+  srv("apiUsage", function(d){ USE = d; drawUsage(); }, [auth()]);
+}
+function drawUsage(){
+  var d = USE, list = d.people.filter(function(p){ return USE_F === "all" || isTeacher(p); });
+  var on = list.filter(function(p){ return p.days > 0; }).sort(function(a,b){ return b.days - a.days || b.used - a.used; });
+  var off = list.filter(function(p){ return !p.days; });
+  var noLink = off.filter(function(p){ return p.email && !p.linkSent; });
+  var h = '<div class="chips" role="group" aria-label="את מי מציגים">' +
+    [["teach","מורים ומחנכים"],["all","כל הצוות"]].map(function(x){
+      return '<button type="button" class="chip" aria-pressed="'+(USE_F===x[0])+'" onclick="USE_F=\''+x[0]+'\';drawUsage()">'+x[1]+'</button>'; }).join("") + '</div>' +
+    '<div class="use-sum"><div><b>'+on.length+'</b><span>נכנסו ב-'+d.days+' הימים האחרונים</span></div>' +
+    '<div><b>'+off.length+'</b><span>לא נכנסו</span></div>' +
+    '<div><b>'+noLink.length+'</b><span>עוד לא קיבלו קישור</span></div></div>' +
+    '<p class="hint">רק כניסה מהקישור האישי מזוהה. ' + (d.anon.devices ? 'עוד '+d.anon.devices+' מכשירים נכנסו בלי קישור אישי.' : 'אין כניסות בלי קישור.') + '</p>';
+  if(noLink.length) h += '<div class="row"><button class="btn" onclick="sendUse(null)">שליחת הקישור האישי ל-'+noLink.length+' שעוד לא קיבלו</button></div>';
+  h += '<h3>לא נכנסו ('+off.length+')</h3><div>' + (off.length ? off.map(function(p){
+      var st = !p.email ? 'אין מייל בתיק הצוות' : (p.linkSent ? 'הקישור נשלח ב-'+esc(p.linkSent) : 'עוד לא קיבל/ה קישור');
+      if(p.last) st += ' · נכנס/ה לאחרונה ב-'+heDay(p.last);
+      return '<div class="uitem"><div class="bd"><span class="t">'+esc(p.name)+'</span><span class="s">'+esc(p.role)+(p.role?' · ':'')+st+'</span></div>' +
+        (p.email ? '<button class="btn3" onclick="sendUse(\''+esc(p.email)+'\')">'+(p.linkSent?'שליחה שוב':'שליחה')+'</button>' : '') + '</div>';
+    }).join("") : '<p class="hint">כולם נכנסו.</p>') + '</div>';
+  h += '<h3>נכנסו ('+on.length+')</h3><div>' + (on.length ? on.map(function(p){
+      var bits = [p.days+' ימים'];
+      if(p.open) bits.push(p.open+' פתיחות'); if(p.show) bits.push(p.show+' הקרנות'); if(p.used) bits.push(p.used+' "עשיתי"');
+      return '<div class="uitem"><div class="bd"><span class="t">'+esc(p.name)+'</span><span class="s">'+esc(p.role)+(p.role?' · ':'')+'לאחרונה ב-'+heDay(p.last)+'</span>' +
+        '<span class="s">'+bits.join(' · ')+'</span>' + (p.top.length ? '<span class="s">בעיקר: '+p.top.map(esc).join(', ')+'</span>' : '') + '</div></div>';
+    }).join("") : '<p class="hint">עוד אף אחד/ת.</p>') + '</div>';
+  if(d.top.length) h += '<h3>התרגולים שהכי משתמשים בהם</h3><div>' + d.top.map(function(t){
+      var bits = []; if(t.used) bits.push(t.used+' "עשיתי"'); if(t.show) bits.push(t.show+' הקרנות'); if(t.open) bits.push(t.open+' פתיחות');
+      return '<div class="uitem"><div class="bd"><span class="t">'+esc(t.title)+'</span><span class="s">'+bits.join(' · ')+' · '+t.people+' אנשי צוות</span></div></div>'; }).join("") + '</div>';
+  h += '<div class="row"><a class="btn3" style="display:inline-flex;align-items:center;text-decoration:none" href="'+esc(d.sheetUrl)+'" target="_blank">כל הרישומים בגיליון</a></div>';
+  $("use").innerHTML = h;
+}
+function sendUse(email){
+  var list = email ? [email] : USE.people.filter(function(p){ return (USE_F === "all" || isTeacher(p)) && !p.days && p.email && !p.linkSent; }).map(function(p){ return p.email; });
+  var txt = email ? "יישלח מייל עם הקישור האישי לאתר." :
+    "יישלח מייל ל-"+list.length+" אנשי צוות, לכל אחד/ת הקישור האישי שלו/ה לאתר. במייל כתוב שהקישור מזהה אותם, כדי שנדע באילו תרגולים משתמשים.";
+  askConfirm(txt, function(){
+    showOk("שולח...");
+    srv("apiSendUseLinks", function(r){ showOk("נשלחו "+r.sent+" מיילים."); renderUsage(); }, [auth(), list]);
+  }, {yes:"שליחה"});
+}
+
+/* ── קישורים אישיים, לשחף בלבד ─────────────────────────────── */
+function showLinks(){ srv("apiLinks", renderLinks, [auth()]); }
+function renderLinks(d){
+  var h = '<p class="hint" style="margin-top:10px">כל איש צוות יכול לבקש קישור למייל שלו במסך הכניסה. ' +
+          'אלה הקישורים של הצוות המוביל, למקרה שצריך לשלוח אותם ידנית.</p>';
+  d.people.forEach(function(p){
+    h += '<div class="lnk"><strong>'+esc(p.name)+'</strong><br>'+esc(p.url)+
+         '<div class="row" style="margin-top:6px"><button class="btn3" onclick="cp(\''+p.url+'\')">העתקה</button>' +
+         '<button class="btn3" onclick="cp(\''+p.tichnunUrl+'\')">קישור לתכנון השבועות</button></div></div>';
+  });
+  h += '<div class="row"><button class="btn3" onclick="sendTichnunLinks()">שליחת קישור התכנון במייל לארבע הנכנסות</button></div>';
+  h += '<div class="lnk">כתובת המערכת לשליחה לצוות: '+esc(d.base)+'</div>' +
+       '<div class="row"><a class="btn3" style="display:inline-flex;align-items:center;text-decoration:none" href="'+esc(d.sheetUrl)+'" target="_blank">הגיליון</a>' +
+       '<a class="btn3" style="display:inline-flex;align-items:center;text-decoration:none" href="'+esc(d.folderUrl)+'" target="_blank">תיקיית הקבצים</a></div>';
+  $("links").innerHTML = h;
+}
+function sendTichnunLinks(){
+  askConfirm("לשלוח לחן, עדי, שני ואילנה מייל אישי עם הקישור שלהן לתכנון השבועות? המייל חתום בשמך.", function(){
+    srv("apiSendTichnunLinks", function(r){ showOk("נשלח ל: " + r.sent.join(", ") + "."); }, [auth()]);
+  });
+}
+function cp(t){ navigator.clipboard.writeText(t).then(function(){ showOk("הועתק."); }); }
+
+/* ── הגדרות, לשחף בלבד ─────────────────────────────────────── */
+function renderSettings(){
+  $("pane").innerHTML = '<div class="card"><h2>סיסמת הצוות המוביל</h2>' +
+    '<p class="sub">סיסמה אחת משותפת לחמש הנכנסות. החלפה מנתקת את כולן והן יזינו את החדשה. כדאי לשלוח אותה בהודעה אישית, לא במייל.</p>' +
+    '<label class="f">סיסמה חדשה (8 תווים לפחות)<input type="text" id="npw" autocomplete="off"></label>' +
+    '<div class="row"><button class="btn" onclick="setPw()">שמירת הסיסמה</button></div>' +
+    '<div class="msg" id="msg" hidden></div></div>' +
+    '<div class="card"><h2>פידבק אנונימי מהצוות</h2>' +
+    '<p class="sub">דוח עם סיכום הפידבק על התרגולים יוצא אוטומטית אחת לשבועיים לכל הצוות המוביל, רק כשיש תשובות חדשות. אפשר לשלוח אותו עכשיו.</p>' +
+    '<div class="row"><button class="btn2" onclick="sendReport()">שליחת הדוח עכשיו</button></div>' +
+    '<div class="msg" id="msg3" hidden></div></div>';
+}
+function setPw(){
+  var v = $("npw").value;
+  if(v.length < 8){ showErr({message:"הסיסמה צריכה להיות באורך 8 תווים לפחות."}); return; }
+  srv("apiSetPassword", function(){
+    notify("הסיסמה נשמרה. כל הכניסות נותקו, וגם שלך. היכנסי מחדש עם הסיסמה החדשה.", {title:"נשמר", then:function(){ endSession(); }});
+  }, [auth(), v]);
+}
+function sendReport(){
+  var m = $("msg3"); m.hidden = false; m.className = "msg ok"; m.textContent = "שולח...";
+  srv("apiFeedbackReport", function(r){
+    m.className = "msg ok"; m.textContent = r.sent ? "הדוח נשלח." : "לא נשלח: " + (r.why || "");
+  }, [auth()], function(e){ m.className = "msg err"; m.textContent = e.message; });
+}
+
+boot();
+</script>
+</body>
+</html>

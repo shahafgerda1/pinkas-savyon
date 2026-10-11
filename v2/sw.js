@@ -1,10 +1,10 @@
-/* פנקס התרגולים: עבודה בלי רשת (4.10.2026).
+/* מרחב השפה הקשובה: עבודה בלי רשת (4.10.2026).
    הדף והנתונים: קודם מהרשת, כדי שעדכון יגיע מיד, ובלי רשת מהעותק השמור.
    תמונות הדפים: מהעותק השמור, ונשמרות בפעם הראשונה שפותחים אותן.
    רישום השימוש וההקלטות: תמיד מהרשת, אף פעם לא מהעותק. */
-const V = 'pinkas-2026-10-07d';
+const V = 'pinkas-2026-10-11a';
 const IMG = 'pinkas-img', EXT = 'pinkas-ext';
-const CORE = ['./', 'index.html', 'data-v2.js', 'logo-hi.png', 'wings-hi.png', 'boger-poster.jpg',
+const CORE = ['./', 'index.html', 'team.html', 'data-v2.js', 'logo-hi.png', 'wings-hi.png', 'boger-poster.jpg',
               'icon-32.png', 'icon-180.png', 'icon-192.png', 'manifest.webmanifest'];
 const IMG_MAX = 150;
 

@@ -5,14 +5,14 @@
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>פנקס התרגולים · סביון</title>
+<title>מרחב השפה הקשובה · סביון</title>
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-180.png">
 <meta name="theme-color" content="#54078F">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="פנקס התרגולים">
+<meta name="apple-mobile-web-app-title" content="מרחב השפה הקשובה">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Rubik:wght@700;800&display=swap">
@@ -213,6 +213,12 @@ a.tag{color:var(--ink);min-height:44px;background:#fff;border:1px solid var(--li
 .mine-acts{display:flex;flex-direction:column;gap:10px;padding:14px 16px;background:var(--card);border-radius:var(--r)}
 .mine-acts .row>.btn{flex:1 1 140px}
 .mine-acts .st{font-size:15px;color:var(--ink2);margin:0}
+.fb{display:flex;flex-direction:column;gap:10px;padding:14px 16px;background:var(--card);border-radius:var(--r)}
+.fb h2{font-size:18px;margin:0}
+.fb .st{font-size:15px;color:var(--ink2);margin:0}
+.fb .stars .chip{min-width:48px;justify-content:center;font-size:20px;padding:0 10px}
+.fb textarea{width:100%;min-height:72px;font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--line,#B9A8CC);border-radius:12px}
+.fb .ok{color:var(--ok,#1F7A4A);font-weight:700}
 .btn.ghost[aria-pressed="true"]{background:var(--brand);color:#fff}
 .markTag{position:absolute;top:8px;left:8px;background:var(--brand);color:#fff;font-size:12px;font-weight:700;padding:3px 8px;border-radius:10px}
 .card.text{position:relative}
@@ -248,7 +254,7 @@ a.tag{color:var(--ink);min-height:44px;background:#fff;border:1px solid var(--li
   .print-me .hero{max-height:none;border-radius:0}
   .print-me>*:not(.hero){display:none !important}
 }
-/* ===== כריכה חדשה (4.10.2026): הפנקס כחפץ. כריכת בד סגולה, גומייה, דף שתחוב בפנים, ולשוניות חוצצים ===== */
+/* ===== כריכה חדשה (4.10.2026): האתר כחפץ. כריכת בד סגולה, גומייה, דף שתחוב בפנים, ולשוניות חוצצים ===== */
 .nb{position:relative;overflow:hidden;border-radius:26px;padding:22px 20px 24px;color:#fff;
   background:radial-gradient(120% 90% at 85% 0%,#7A2BB8 0%,rgba(122,43,184,0) 60%),linear-gradient(160deg,#5B0C99 0%,#3B0566 100%);
   box-shadow:0 18px 40px -18px rgba(59,5,102,.55);display:flex;flex-direction:column;gap:22px}
@@ -337,11 +343,11 @@ a.tag{color:var(--ink);min-height:44px;background:#fff;border:1px solid var(--li
 <body>
 <a class="skip" href="#main" id="skip">דילוג לתוכן</a>
 <div id="app"></div>
-<noscript><p style="padding:16px">כדי לדפדף בפנקס צריך להפעיל JavaScript בדפדפן.</p></noscript>
+<noscript><p style="padding:16px">כדי לדפדף באתר צריך להפעיל JavaScript בדפדפן.</p></noscript>
 <script src="data-v2.js"></script>
 <script>
 "use strict";
-/* פנקס התרגולים של סביון, שלב 1: קריאה והקרנה בלבד.
+/* מרחב השפה הקשובה של סביון, שלב 1: קריאה והקרנה בלבד.
    הנתונים ב-data-v2.js (נבנה ב-build_v2.py). התוספות של צוות השפה
    הקשובה נמשכות בכל טעינה, לקריאה בלבד. אין כאן עריכה, גיבוי או שחזור. */
 
@@ -513,15 +519,16 @@ function renderCover(){
       <span class="nb-band" aria-hidden="true"></span>
       <div class="nb-main">
         <div class="nb-top"><img src="logo-hi.png" alt="סמל בית ספר סביון"><span>${hello} · יום ${day}</span></div>
-        <h1>פנקס<br><em>התרגולים</em></h1>
+        <h1>מרחב<br><em>השפה הקשובה</em></h1>
         <p class="nb-sub">בית ספר סביון · מצמיח לך כנפיים</p>
         <div class="search"><label for="q" class="hint" style="color:inherit">מה מחפשים היום?</label>
           <form data-act="search" role="search"><input id="q" type="search" placeholder="למשל: רמזור, נשימה, כעס" autocomplete="off" enterkeyhint="search"><button type="submit">חיפוש</button></form></div>
         <div class="nb-acts">
           <button type="button" class="btn gold" data-act="surprise" title="תרגול נוכחות קצר, בהגרלה">הנני כאן</button>
-          <a class="btn onpurple" href="${ADD_URL}" target="_blank" rel="noopener">הוספת תרגול</a>
+          <a class="btn onpurple" href="team.html#new">הוספת תרגול</a>
+          <a class="btn onpurple" href="team.html">כניסת צוות</a>
         </div>
-        <div class="nb-count">${inM.length} תרגולים בפנקס</div>
+        <div class="nb-count">${inM.length} תרגולים</div>
       </div>
       ${today?`<a class="nb-page" href="#/p/${esc(today.id)}"><span class="clip" aria-hidden="true"></span><span class="lbl">התרגול של היום</span>
         ${imgSrc(today)?`<img src="${esc(imgSrc(today))}" alt="">`:''}
@@ -553,7 +560,7 @@ function renderCover(){
       </div>
     </section>
     ${mineCoverHtml()}
-    <footer class="foot">${whoHtml()}${installHtml()}<a href="#/negishut">הצהרת נגישות</a></footer>
+    <footer class="foot">${whoHtml()}${installHtml()}<a href="team.html">כניסת צוות מוביל השפה הקשובה</a><a href="#/negishut">הצהרת נגישות</a></footer>
   </main>`;
 }
 /* נוצות שמרחפות על הכריכה. המיקום קבוע לכל יום, כדי שלא יקפצו בכל רינדור */
@@ -667,8 +674,8 @@ function fetchBoger(){
 /* ---------- המהלך התרגולי השנתי לפי דמות בוגר סביון ----------
    מקור: הגיליון "מהלך תרגולי שנתי סביון תשפ"ז" (1OuAu6IXrUhwge8pTxdVLGYpknZUcc4s5BjNAMj5PW_4),
    חמישה תחומי SEL ובכל אחד נושאים לפי הסדר. כל תחום יושב על חלק בבוגר סביון.
-   topics הם נושאי הפנקס שמתרגלים את נושא המהלך (שיוך של Claude, 2.10.2026);
-   נושא בלי topics עוד אין לו תרגולים בפנקס. */
+   topics הם נושאי האתר שמתרגלים את נושא המהלך (שיוך של Claude, 2.10.2026);
+   נושא בלי topics עוד אין לו תרגולים באתר. */
 const MAHALACH = [
   {part:2, domain:'מודעות עצמית', goal:'להכיר את החוויה הפנימית', skills:'מודעות עצמית, זיהוי רגשות, זיהוי תחושות גוף, הכרת הטוב, רפלקציה', steps:[
     {t:'תודעת מתחיל', topics:['c08286b4']},
@@ -763,7 +770,7 @@ function renderStep(i){
     ${live && live.note ? `<div class="stepnote">${esc(live.note)}</div>` : ''}
     ${filterLine()}
     ${starter ? `<section class="starthere" aria-label="מתחילים כאן"><span class="k">מתחילים כאן</span><div class="grid">${cardHtml(starter)}</div></section>` : ''}
-    ${rest.length ? `${starter?'<span class="hint">ועוד בשלב הזה</span>':''}<div class="grid">${rest.map(cardHtml).join('')}</div>` : (starter ? '' : `<div class="empty-note">${live && live.missing ? 'צוות השפה הקשובה מחפש תרגול מתאים לשלב הזה.' : 'עוד אין בפנקס תרגולים לשלב הזה.'} אפשר להוסיף דרך "הוספת תרגול".</div>`)}
+    ${rest.length ? `${starter?'<span class="hint">ועוד בשלב הזה</span>':''}<div class="grid">${rest.map(cardHtml).join('')}</div>` : (starter ? '' : `<div class="empty-note">${live && live.missing ? 'צוות השפה הקשובה מחפש תרגול מתאים לשלב הזה.' : 'עוד אין באתר תרגולים לשלב הזה.'} אפשר להוסיף דרך "הוספת תרגול".</div>`)}
     <nav class="row stepnav" aria-label="שלבי המהלך">
       ${prev?`<a class="btn ghost" href="#/step/${prev.i}">→ ${esc(prev.t)}</a>`:''}
       ${next?`<a class="btn ghost" href="#/step/${next.i}">${esc(next.t)} ←</a>`:''}
@@ -844,7 +851,7 @@ function renderA11y(){
     ${backLink('#/','חזרה לכריכה')}
     <div class="dhead"><h1>הצהרת נגישות</h1><div class="m">עודכנה ב-${A11Y_UPDATED}</div></div>
     <div class="prose">
-      <p>פנקס התרגולים הוא אתר של בית ספר סביון, שמיועד לצוות בית הספר. אנחנו רוצים שכל איש ואשת צוות יוכלו להשתמש בו בקלות, גם עם טלפון, מקלדת בלבד או קורא מסך.</p>
+      <p>מרחב השפה הקשובה הוא אתר של בית ספר סביון, שמיועד לצוות בית הספר. אנחנו רוצים שכל איש ואשת צוות יוכלו להשתמש בו בקלות, גם עם טלפון, מקלדת בלבד או קורא מסך.</p>
       <h2>מה עשינו באתר</h2>
       <ul>
         <li>האתר כתוב בעברית מימין לשמאל, ומותאם לטלפון, למחשב ולמסך הקרנה בכיתה.</li>
@@ -964,12 +971,12 @@ function renderPractice(p){
       ${whyBox(p)}
       ${p.noShow?`<p class="hint">תרגול פרטני, מול תלמיד אחד. בלי הקרנה.</p>`:`<button type="button" class="btn" data-act="show">${p.type==='activity'?'הקרנת ההוראות על הלוח':'הקרנה על הלוח'}</button>`}`;
   }
-  app.innerHTML = `<main class="wrap narrow" id="main" data-id="${esc(p.id)}">${head}${body}${mineActsHtml(p)}${bylineHtml(p)}${moreHtml(p)}</main>`;
+  app.innerHTML = `<main class="wrap narrow" id="main" data-id="${esc(p.id)}">${head}${body}${mineActsHtml(p)}${fbHtml(p)}${bylineHtml(p)}${moreHtml(p)}</main>`;
   if(p.audio) wireAudio(p);
   track('open', p);
 }
 /* כל המצגות ודפי העבודה של הנושא מופיעים בכל תרגול שלו (הכרעת שחף, 7.10.2026):
-   החומרים הסגולים בדרייב, ומה שהתרגול מזכיר ב"מה להכין" עולה ראשון, ואחריהם המצגות והדפים שבפנקס עצמו */
+   החומרים הסגולים בדרייב, ומה שהתרגול מזכיר ב"מה להכין" עולה ראשון, ואחריהם המצגות והדפים שבאתר עצמו */
 function topicMatsHtml(p){
   const F = p.full || {}, t = topicOf(p.topic);
   const mats = p.materials && p.materials.length ? p.materials : (t && t.materials) || [];
@@ -1113,6 +1120,9 @@ app.addEventListener('click', e=>{
   else if(act==='clear'){ PREF.type='all'; PREF.by='boger'; PREF.time='all'; savePref(); render(); }
   else if(act==='save'){ toggleSave(app.querySelector('main').dataset.id); }
   else if(act==='did'){ const box=document.getElementById('didAsk'); if(box){ box.hidden=false; const f=box.querySelector('button'); if(f) f.focus(); } }
+  else if(act==='fbUse'){ fbPick(a.dataset.use); }
+  else if(act==='fbStar'){ fbStar(+a.dataset.r); }
+  else if(act==='fbSend'){ fbSend(app.querySelector('main').dataset.id); }
   else if(act==='didMin'){ markDid(app.querySelector('main').dataset.id, +a.dataset.m||0); }
   else if(act==='forget'){ forgetUser(); }
   else if(act==='install'){ doInstall(); }
@@ -1218,8 +1228,57 @@ function renderMine(){
   </main>`;
 }
 
-/* ---------- מי משתמש/ת בפנקס (הכרעת שחף, 4.10.2026) ----------
-   קישור אישי (?u=...) שנשלח מלשונית "שימוש" במסך התוספות. הפנקס זוכר אותו בדפדפן,
+/* ---------- פידבק אנונימי (11.10.2026, הכרעת שחף) ----------
+   נשלח בלי הקישור האישי, בלי מזהה מכשיר ובלי שום דבר שמקשר אותו לאדם. הנעילה לאחר שליחה
+   נשמרת בדפדפן בלבד, ולכן מי שמנקה את הדפדפן יכול לשלוח שוב. זה מחיר האנונימיות. */
+const FB_KEY = 'pinkasV2Fb';
+let FB = {}; try{ FB = JSON.parse(localStorage.getItem(FB_KEY)||'{}'); }catch(e){}
+const FB_STATE = {use:'', rating:0};
+function fbHtml(p){
+  if(FB[p.id]) return `<section class="fb" aria-label="פידבק"><p class="st ok" role="status">תודה, הפידבק שלך התקבל.</p></section>`;
+  const U = [['used','השתמשתי'],['notyet','עוד לא'],['na','לא מתאים לי']];
+  return `<section class="fb" aria-label="פידבק אנונימי" id="fb">
+    <h2>איך היה?</h2>
+    <p class="st">פידבק אנונימי לצוות המוביל. הוא לא מקושר לקישור האישי שלך.</p>
+    <div class="chips" role="group" aria-label="האם השתמשת">${U.map(u=>`<button type="button" class="chip" data-act="fbUse" data-use="${u[0]}" aria-pressed="false">${u[1]}</button>`).join('')}</div>
+    <div id="fbMore" hidden>
+      <p class="st">עד כמה זה שירת אותך?</p>
+      <div class="chips stars" role="group" aria-label="דירוג">${[1,2,3,4,5].map(n=>`<button type="button" class="chip" data-act="fbStar" data-r="${n}" aria-pressed="false" aria-label="${n} מתוך 5">${n}★</button>`).join('')}</div>
+    </div>
+    <label class="st" for="fbNote" id="fbNoteL" hidden>רוצה להוסיף משהו? (לא חובה, בלי שמות של תלמידים)</label>
+    <textarea id="fbNote" maxlength="300" hidden></textarea>
+    <div class="row"><button type="button" class="btn" data-act="fbSend" id="fbSend" disabled>שליחה</button></div>
+    <p class="st" id="fbMsg" role="status" hidden></p>
+  </section>`;
+}
+function fbPick(use){
+  FB_STATE.use = use; if(use!=='used') FB_STATE.rating = 0;
+  document.querySelectorAll('#fb [data-act=fbUse]').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.use===use)));
+  document.getElementById('fbMore').hidden = use!=='used';
+  document.getElementById('fbNote').hidden = false; document.getElementById('fbNoteL').hidden = false;
+  document.getElementById('fbSend').disabled = false;
+  if(use!=='used') document.querySelectorAll('#fb [data-act=fbStar]').forEach(b=>b.setAttribute('aria-pressed','false'));
+}
+function fbStar(n){
+  FB_STATE.rating = n;
+  document.querySelectorAll('#fb [data-act=fbStar]').forEach(b=>b.setAttribute('aria-pressed', String(+b.dataset.r<=n)));
+}
+function fbSend(id){
+  const msg = document.getElementById('fbMsg'), btn = document.getElementById('fbSend');
+  if(!FB_STATE.use) return;
+  btn.disabled = true; msg.hidden = false; msg.textContent = 'שולח...';
+  fetch(ADD_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({fn:'apiFeedback', args:[{pid:id, use:FB_STATE.use, rating:FB_STATE.rating, note:document.getElementById('fbNote').value}]})})
+    .then(r=>r.json()).then(j=>{
+      if(!j.ok){ msg.textContent = j.error || 'לא נשלח, נסו שוב.'; btn.disabled = false; return; }
+      FB[id] = Date.now(); try{ localStorage.setItem(FB_KEY, JSON.stringify(FB)); }catch(e){}
+      const box = document.getElementById('fb'); if(box) box.outerHTML = '<section class="fb"><p class="st ok" role="status">תודה, הפידבק שלך התקבל.</p></section>';
+      FB_STATE.use = ''; FB_STATE.rating = 0;
+    }, ()=>{ msg.textContent = 'אין חיבור, נסו שוב.'; btn.disabled = false; });
+}
+
+/* ---------- מי משתמש/ת באתר (הכרעת שחף, 4.10.2026) ----------
+   קישור אישי (?u=...) שנשלח מלשונית "שימוש" במסך התוספות. האתר זוכר אותו בדפדפן,
    ורושם כניסה, פתיחה, הקרנה, שמירה ו"עשיתי". האירועים נאספים בתור (שורד גם בלי רשת)
    ונשלחים בצרורות לשרת התוספות. אין כאן שום מידע על תלמידים. */
 const USER_KEY = 'pinkasV2User', QUEUE_KEY = 'pinkasV2Queue', SEEN_KEY = 'pinkasV2Seen', DEV_KEY = 'pinkasV2Dev';
@@ -1285,7 +1344,7 @@ function flushUse(){
 window.addEventListener('online', flushUse);
 function whoHtml(){
   if(!USER.u) return '';
-  return `<div class="who" id="who"><span>הפנקס מזהה אותך${USER.name?' כ'+esc(USER.name):''} מהקישור האישי, וכך אנחנו יודעים באילו תרגולים משתמשים בבית הספר.</span><button type="button" data-act="forget">זה לא אני</button></div>`;
+  return `<div class="who" id="who"><span>האתר מזהה אותך${USER.name?' כ'+esc(USER.name):''} מהקישור האישי, וכך אנחנו יודעים באילו תרגולים משתמשים בבית הספר.</span><button type="button" data-act="forget">זה לא אני</button></div>`;
 }
 function forgetUser(){
   USER = {u:'', name:''};
@@ -1313,8 +1372,8 @@ window.addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); INSTALL 
 function isStandalone(){ return matchMedia('(display-mode: standalone)').matches || navigator.standalone===true; }
 function installHtml(){
   if(isStandalone()) return '';
-  if(INSTALL) return `<button type="button" class="install" data-act="install">הוספת הפנקס למסך הבית של הטלפון</button>`;
-  if(/iphone|ipad|ipod/i.test(navigator.userAgent)) return `<span>באייפון: כפתור השיתוף בספארי, ואז "הוספה למסך הבית". כך הפנקס נפתח גם בלי רשת.</span>`;
+  if(INSTALL) return `<button type="button" class="install" data-act="install">הוספת האתר למסך הבית של הטלפון</button>`;
+  if(/iphone|ipad|ipod/i.test(navigator.userAgent)) return `<span>באייפון: כפתור השיתוף בספארי, ואז "הוספה למסך הבית". כך האתר נפתח גם בלי רשת.</span>`;
   return '';
 }
 function doInstall(){
@@ -1357,7 +1416,7 @@ function fetchAdds(){
   window.__pinkasAdds = applyAdds;
   const s = document.createElement('script');
   s.src = ADDS_URL + '&v=2&callback=__pinkasAdds';
-  s.onerror = function(){};  /* בלי רשת: הפנקס עובד כרגיל */
+  s.onerror = function(){};  /* בלי רשת: האתר עובד כרגיל */
   document.body.appendChild(s);
 }
 
