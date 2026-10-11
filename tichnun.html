@@ -255,7 +255,15 @@ function status(){
   else t = '✓ זו התכנית המשותפת. כל שינוי שלך מגיע לכולן.';
   if(SH.loaded && SH.ver && !SH.err) t += ' עודכנה על ידי ' + SH.by + ' ב-' + SH.at + '.';
   let offer = '';
-  try{ if(SH.can && SH.loaded && !SH.ver && localStorage.getItem(KEY)) offer = ' <button class="btn mini" id="adoptLocal">להפוך את התכנית השמורה בדפדפן הזה לתכנית המשותפת</button>'; }catch(e){}
+  try{
+    const has = !!localStorage.getItem(KEY);
+    if(SH.loaded && !SH.ver && has){
+      offer = SH.can ? ' <button class="btn mini" id="adoptLocal">להפוך את התכנית השמורה בדפדפן הזה לתכנית המשותפת</button>'
+                     : ' יש כאן תכנית שמורה בדפדפן הזה. כדי להפוך אותה למשותפת, פתחו את הקישור האישי מהמייל בדפדפן הזה.';
+    } else if(SH.can && SH.loaded && !SH.ver && !has){
+      offer = ' בדפדפן הזה אין תכנית ישנה שמורה. אם התכנית נבנתה בדפדפן או במכשיר אחר, פתחו משם את הקישור האישי.';
+    }
+  }catch(e){}
   el.innerHTML = t + offer;
 }
 
