@@ -87,6 +87,7 @@ textarea{width:100%;min-height:180px;font-family:Consolas,monospace;font-size:13
 <main class="wrap">
   <header>
     <h1>מתכנן תרגול השבוע</h1>
+    <p class="note noprint" id="shared" role="status" style="font-weight:700"></p>
     <p class="lead">מציע תאריכים לשלבי המהלך התרגולי השנתי, שבוע לכל שלב, ומדלג על חופשות. בפנקס התרגול מתחלף ביום שישי שלפני השבוע שלו.</p>
   </header>
 
@@ -194,11 +195,69 @@ const SUGG = [
   {ev:'e19',step:24, why:'שבועות, חג הביכורים: נתינה.'}
 ];
 
-const KEY = 'pinkasWeeklyPlanner.v1';
+/* תכנית משותפת (11.10.2026): המצב יושב בגיליון התוספות, ושחף, חן, עדי, שני ואילנה משנות אותו לכולן.
+   מי שנכנס בלי הקישור האישי רואה את התכנית בלבד. KEY הוא התכנית הפרטית הישנה מלפני השיתוף,
+   CKEY הוא עותק אחרון של המשותפת (לתצוגה כשהשרת לא עונה), TKEY הוא הטוקן האישי. */
+const API = 'https://script.google.com/macros/s/AKfycbwwr4eOX9jFACxB_nyTfk0k-wOOCTKozJE6SIRFRFNjcOZdcvSDWVX5QdmFerebVixoeg/exec';
+const KEY = 'pinkasWeeklyPlanner.v1', CKEY = 'pinkasWeeklyPlanner.shared', TKEY = 'pinkasPlannerToken';
 const DEF = {start:'2026-10-11', end:'2027-06-30', min:3, order:STEPS.map(s=>s.i), n:{}, pin:{3:'2026-10-11'}, wk:{}, extra:[], hide:[]};
-let S = load();
-function load(){ try{ const x = JSON.parse(localStorage.getItem(KEY)||'null'); if(x) return Object.assign({}, DEF, x); }catch(e){} return JSON.parse(JSON.stringify(DEF)); }
-function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+const norm = x => Object.assign(JSON.parse(JSON.stringify(DEF)), x || {});
+let TOKEN = '';
+try{ const t = new URLSearchParams(location.search).get('t'); if(t){ localStorage.setItem(TKEY, t); history.replaceState(null,'',location.pathname); } TOKEN = localStorage.getItem(TKEY) || ''; }catch(e){}
+let SH = {ver:0, by:'', at:'', can:false, me:'', err:'', saving:false, pending:false, loaded:false};
+let S = (()=>{ try{ const x = JSON.parse(localStorage.getItem(CKEY)||'null'); if(x) return norm(x); }catch(e){} return norm(null); })();
+function jsonp(params){
+  return new Promise((res, rej)=>{
+    const cb = 'cb'+Date.now()+Math.floor(Math.random()*1e6), s = document.createElement('script');
+    const done = ()=>{ clearTimeout(tm); delete window[cb]; s.remove(); };
+    const tm = setTimeout(()=>{ done(); rej(new Error('timeout')); }, 20000);
+    window[cb] = d=>{ done(); res(d); };
+    s.onerror = ()=>{ done(); rej(new Error('net')); };
+    s.src = API + '?' + new URLSearchParams(Object.assign({callback:cb}, params)).toString();
+    document.head.appendChild(s);
+  });
+}
+function cacheShared(){ try{ localStorage.setItem(CKEY, JSON.stringify(S)); }catch(e){} }
+function adopt(d){ if(d.state) S = norm(d.state); else if(!d.ver) S = norm(null); SH.ver = d.ver; SH.by = d.by||''; SH.at = d.at||''; cacheShared(); }
+async function pull(){
+  try{
+    const d = await jsonp({api:'tichnun', t:TOKEN});
+    SH.can = !!d.can; SH.me = d.me||''; SH.err = '';
+    if(!SH.loaded || d.ver !== SH.ver){ adopt(d); }
+    SH.loaded = true;
+    render();
+  }catch(e){ SH.err = 'השרת לא ענה, מוצגת התכנית האחרונה ששמורה כאן. אי אפשר לערוך עד שהחיבור חוזר.'; SH.can = false; render(); }
+}
+let saveTimer;
+function save(){ cacheShared(); SH.pending = true; clearTimeout(saveTimer); saveTimer = setTimeout(flush, 500); status(); }
+async function flush(){
+  if(SH.saving){ saveTimer = setTimeout(flush, 300); return; }
+  SH.saving = true; SH.pending = false; let conflict = false;
+  const body = JSON.stringify(S);
+  try{
+    if(encodeURIComponent(body).length > 7000) throw new Error('big');
+    const d = await jsonp({api:'tichnunsave', t:TOKEN, base:SH.ver, d:body});
+    if(d.ok){ SH.ver = d.ver; SH.by = d.by; SH.at = d.at; SH.err = ''; }
+    else if(d.conflict){ conflict = true; SH.pending = false; adopt(d); SH.err = ''; toast('מישהי עדכנה את התכנית לפני רגע. טענתי את הגרסה שלה, ואת השינוי האחרון שלך צריך לעשות שוב.'); render(); }
+    else { SH.err = d.error || 'השמירה לא הצליחה.'; }
+  }catch(e){ SH.err = e.message==='big' ? 'התכנית גדולה מדי לשמירה. להסיר אירועים שנוספו.' : 'השמירה לא הגיעה לשרת, מנסה שוב.'; if(e.message!=='big'){ SH.pending = true; saveTimer = setTimeout(flush, 8000); } }
+  SH.saving = false;
+  if(SH.pending && !conflict && !SH.err) saveTimer = setTimeout(flush, 300);
+  status();
+}
+function status(){
+  const el = document.getElementById('shared'); if(!el) return;
+  let t;
+  if(SH.err) t = '⚠️ ' + SH.err;
+  else if(!SH.loaded) t = 'טוען את התכנית המשותפת...';
+  else if(!SH.can) t = '👁 צפייה בלבד. לעריכה נכנסים מהקישור האישי.';
+  else if(SH.saving || SH.pending) t = 'שומר לכולן...';
+  else t = '✓ זו התכנית המשותפת. כל שינוי שלך מגיע לכולן.';
+  if(SH.loaded && SH.ver && !SH.err) t += ' עודכנה על ידי ' + SH.by + ' ב-' + SH.at + '.';
+  let offer = '';
+  try{ if(SH.can && SH.loaded && !SH.ver && localStorage.getItem(KEY)) offer = ' <button class="btn mini" id="adoptLocal">להפוך את התכנית השמורה בדפדפן הזה לתכנית המשותפת</button>'; }catch(e){}
+  el.innerHTML = t + offer;
+}
 
 /* תאריכים, תמיד מחרוזת YYYY-MM-DD בשעון מקומי */
 const P = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
@@ -304,16 +363,24 @@ function render(){
   const py = R.weeks.filter(w=>w.step).map(w=>`    {'step': ${w.step}, 'from': '${w.k}', 'to': '${add(w.k,6)}'},  # ${stepOf(w.step).t}`);
   document.getElementById('outPy').value = 'WEEKLY = [\n' + py.join('\n') + '\n]';
   document.getElementById('outCol').value = STEPS.map(s=>rangesText(stepWeeks(R,s.i))).join('\n');
+  /* בלי הרשאת עריכה, כל הפקדים שמשנים את התכנית כבויים (השרת ממילא דוחה שמירה) */
+  document.querySelectorAll('[data-n],[data-pinsel],[data-up],[data-down],[data-wk],[data-pin],[data-delev],#unhide,#resetOrder,#evAdd,#evName,#evFrom,#evTo,#evOff,#start,#end,#min').forEach(el=>{ el.disabled = !SH.can; });
+  status();
 }
 
 function toast(t){ const el = document.getElementById('toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(()=>el.hidden = true, 2200); }
-function set(fn){ fn(); save(); render(); }
+function set(fn){ if(!SH.can){ toast(SH.loaded ? 'צפייה בלבד. לעריכה נכנסים מהקישור האישי.' : 'עוד טוען, רגע'); render(); return; } fn(); save(); render(); }
 
 document.addEventListener('click', e=>{
   const b = e.target.closest('button'); if(!b) return;
   if(b.dataset.tab){
     document.querySelectorAll('[role=tab]').forEach(x=>x.setAttribute('aria-selected', x===b));
     document.querySelectorAll('[data-panel]').forEach(p=>p.hidden = p.dataset.panel!==b.dataset.tab);
+    return;
+  }
+  if(b.id==='adoptLocal'){
+    if(!SH.can) return;
+    try{ const x = JSON.parse(localStorage.getItem(KEY)||'null'); if(x){ S = norm(x); save(); render(); localStorage.removeItem(KEY); toast('התכנית הפכה למשותפת'); } }catch(e){}
     return;
   }
   if(b.dataset.pin) return set(()=>{ S.pin[b.dataset.pin] = b.dataset.at; toast('שובץ וקובע'); });
@@ -342,6 +409,8 @@ document.addEventListener('change', e=>{
   if(t.dataset.pinsel) return set(()=>{ if(t.value) S.pin[t.dataset.pinsel] = t.value; else delete S.pin[t.dataset.pinsel]; });
 });
 render();
+pull();
+setInterval(()=>{ const a = document.activeElement; if(!SH.pending && !SH.saving && !(a && /^(SELECT|INPUT)$/.test(a.tagName))) pull(); }, 60000);
 </script>
 </body>
 </html>
