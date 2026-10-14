@@ -49,6 +49,8 @@
   .use-sum div{background:var(--soft);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:2px}
   .use-sum b{font-family:Rubik,sans-serif;font-size:22px;color:var(--brand)}
   .use-sum span{font-size:13px;color:var(--ink2)}
+  .use-sum .sumbtn{background:var(--soft);border:2px solid transparent;border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:2px;align-items:flex-start;text-align:start;font:inherit;cursor:pointer;min-height:44px}
+  .use-sum .sumbtn[aria-pressed="true"]{border-color:var(--brand)}
   .uitem{display:flex;gap:10px;align-items:flex-start;border-top:1px solid #EEE8F4;padding:10px 0}
   .uitem:first-child{border-top:0}
   .uitem .bd{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
@@ -1153,7 +1155,7 @@ function sendTichnunLinks(){
 function cp(t){ navigator.clipboard.writeText(t).then(function(){ showOk("הועתק."); }); }
 
 /* ── פידבק על תרגולים, לצוות המוביל ──────────────────────────── */
-var FBK = null, FBK_S = "avg";
+var FBK = null, FBK_S = "used";
 function renderFeedback(){
   $("pane").innerHTML = '<div class="card"><h2>פידבק וקליקים על התרגולים</h2><div id="fbk">רגע, סופר...</div><div class="msg" id="msg" hidden></div></div>';
   srv("apiFeedbackBoard", function(d){ FBK = d; drawFeedback(); }, [auth()]);
@@ -1167,11 +1169,11 @@ function drawFeedback(){
     if(FBK_S === "clicks") return (b.clicks||0) - (a.clicks||0) || b.n - a.n;
     return b.n - a.n; });
   var h = '<div class="chips" role="group" aria-label="מיון">' +
-    [["clicks","לפי קליקים"],["avg","לפי דירוג"],["used","לפי כמה השתמשו"],["n","לפי מספר תשובות"]].map(function(x){
+    [["used","לפי כמה השתמשו"],["clicks","לפי קליקים"],["avg","לפי דירוג"],["n","לפי מספר תשובות"]].map(function(x){
       return '<button type="button" class="chip" aria-pressed="'+(FBK_S===x[0])+'" onclick="FBK_S=\''+x[0]+'\';drawFeedback()">'+x[1]+'</button>'; }).join("") + '</div>' +
-    '<div class="use-sum"><div><b>'+d.total+'</b><span>תשובות</span></div>' +
-    '<div><b>'+d.used+'</b><span>"השתמשתי"</span></div>' +
-    '<div><b>'+(d.avgAll ? d.avgAll.toFixed(1) : "·")+'</b><span>דירוג ממוצע ('+d.ratedN+')</span></div></div>' +
+    '<div class="use-sum">' +
+    [["used",d.used,'"השתמשתי"'],["n",d.total,"תשובות"],["avg",(d.avgAll ? d.avgAll.toFixed(1) : "·"),"דירוג ממוצע ("+d.ratedN+")"]].map(function(x){
+      return '<button type="button" class="sumbtn" aria-pressed="'+(FBK_S===x[0])+'" onclick="FBK_S=\''+x[0]+'\';drawFeedback()"><b>'+x[1]+'</b><span>'+x[2]+'</span></button>'; }).join("") + '</div>' +
     '<p class="hint">הפידבק אנונימי. תרגול עם פחות מ-'+d.minGroup+' תשובות, או פחות מ-'+d.minGroup+' דירוגים, לא מוצג בנפרד כדי לשמור על האנונימיות.</p>';
   h += items.length ? items.map(function(t){
     var bits = [t.n+' תשובות', t.used+' השתמשו'];
