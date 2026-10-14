@@ -1,6 +1,6 @@
 /* נבנה אוטומטית ב-build_v2.py. לא לערוך ידנית. */
 window.PINKAS = {
- "built": "2026-10-11",
+ "built": "2026-10-14",
  "doors": [
   {
    "n": 1,
@@ -8679,7 +8679,7 @@ window.PINKAS = {
   {
    "id": "kn_ck_week",
    "topic": "cchekin",
-   "type": "write",
+   "type": "activity",
    "title": "צ'ק אין לאורך השבוע",
    "what": "עוקבים אחרי שלושה דברים בתוכי במשך יום או שבוע, ושמים לב מה משתנה",
    "layer": "ביניים · חטיבה",
@@ -8697,8 +8697,7 @@ window.PINKAS = {
    "houses": [
     "ביניים"
    ],
-   "audience": [],
-   "short": true
+   "audience": []
   },
   {
    "id": "kn_ck_bayti",

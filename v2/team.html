@@ -365,6 +365,7 @@ function render(){
   if(ME.approver){ tabs.push(["review","לאישור"]); tabs.push(["boger","בוגר סביון"]); }
   if(ME.mahalach) tabs.push(["mahalach","המהלך השנתי"]);
   if(ME.approver) tabs.push(["feedback","פידבק וקליקים"]);
+  if(ME.approver) tabs.push(["sivug","בדיקת סיווג"]);
   if(ME.approver) tabs.push(["tichnun","תכנון השבועות ↗"]);
   if(ME.manager) tabs.push(["usage","שימוש"]);
   if(ME.manager) tabs.push(["settings","הגדרות"]);
@@ -381,7 +382,76 @@ function render(){
   else if(TAB === "feedback") renderFeedback();
   else if(TAB === "settings") renderSettings();
   else if(TAB === "mahalach") renderMahalach();
+  else if(TAB === "sivug") renderSivug();
   else renderReview();
+}
+
+/* ── בדיקת סיווג (14.10.2026): קריאה בלבד מ-data-v2.js ──────────
+   לכל פריט: הסוג, נושא הבית והנושאים הנוספים, וסימון ⚠ כשהסוג לא תואם את התוכן.
+   אותם כללים כמו בסקריפט פנקס תרגולים\בדיקות\בדיקת-סיווג-שבוע.js. */
+var SV = {pick:""};
+var SV_LABEL = {page:"דף להקרנה", audio:"הקלטה", write:"תרגול כתוב", activity:"פעילות", deck:"מצגת"};
+function renderSivug(){
+  $("pane").innerHTML = '<div class="card"><h2>בדיקת סיווג</h2><p class="sub">איך כל פריט מסווג ולאילו נושאים הוא משויך. קריאה בלבד; תיקון נעשה במקור הנתונים.</p><div id="sv">רגע...</div></div>';
+  if(window.PINKAS && window.PINKAS.practices) return svDraw();
+  var s = document.createElement("script");
+  s.src = PK_BASE + "data-v2.js?d=" + new Date().toISOString().slice(0,13);
+  s.onload = svDraw;
+  s.onerror = function(){ var el = $("sv"); if(el) el.innerHTML = '<div class="msg err">לא הצלחתי לטעון את נתוני הפנקס.</div>'; };
+  document.head.appendChild(s);
+}
+function svFlags(p, topic){
+  var f = [], full = p.full || {}, steps = full.steps && full.steps.length;
+  if(!SV_LABEL[p.type]) f.push("סוג לא מוכר");
+  if(p.type === "activity" && !steps) f.push("פעילות בלי שלבים");
+  if(p.type === "write" && !full.text) f.push("תרגול כתוב בלי טקסט רציף");
+  if(p.type !== "activity" && steps) f.push('יש שלבים, אבל הסוג "' + (SV_LABEL[p.type]||p.type) + '"');
+  if(p.type !== "write" && full.text) f.push('יש טקסט רציף, אבל הסוג "' + (SV_LABEL[p.type]||p.type) + '"');
+  if(p.type === "page" && !p.img && !p.file && !(p.docs && p.docs.length)) f.push("דף בלי תמונה או קובץ");
+  if(!topic(p.topic)) f.push("נושא הבית אינו קיים");
+  (p.also||[]).forEach(function(a){ if(!topic(a)) f.push("נושא נוסף אינו קיים"); });
+  return f;
+}
+function svDraw(){
+  var el = $("sv"); if(!el) return;
+  var D = window.PINKAS;
+  if(!D || !D.practices){ el.innerHTML = '<div class="msg err">לא הצלחתי לטעון את נתוני הפנקס.</div>'; return; }
+  var T = {}; D.topics.forEach(function(t){ T[t.id] = t; });
+  var topic = function(id){ return T[id]; };
+  var tname = function(id){ return T[id] ? T[id].title : "(נושא לא קיים)"; };
+  var weeks = D.weekly || [], today = new Date().toISOString().slice(0,10);
+  if(!SV.pick){
+    var cur = weeks.filter(function(w){ return w.from <= today && today <= w.to; })[0];
+    SV.pick = cur ? "w:" + cur.from : (weeks[0] ? "w:" + weeks[0].from : "all");
+  }
+  var dm = function(s){ var p = s.split("-"); return Number(p[2]) + "." + Number(p[1]); };
+  var opts = weeks.map(function(w){
+    return '<option value="w:'+w.from+'"'+(SV.pick==="w:"+w.from?" selected":"")+'>שבוע '+dm(w.from)+'-'+dm(w.to)+': '+esc(tname(w.topic))+'</option>';
+  }).join("") + '<option value="flag"'+(SV.pick==="flag"?" selected":"")+'>כל הפנקס: רק פריטים חשודים</option>' +
+    '<option value="all"'+(SV.pick==="all"?" selected":"")+'>כל הפנקס</option>';
+  var list;
+  if(SV.pick.indexOf("w:") === 0){
+    var w = weeks.filter(function(x){ return "w:" + x.from === SV.pick; })[0];
+    list = D.practices.filter(function(p){ return p.topic === w.topic || (p.also||[]).indexOf(w.topic) >= 0; });
+  } else list = D.practices;
+  var rows = list.map(function(p){ return {p:p, f:svFlags(p, topic)}; });
+  var bad = rows.filter(function(r){ return r.f.length; }).length;
+  if(SV.pick === "flag") rows = rows.filter(function(r){ return r.f.length; });
+  var cnt = {}; list.forEach(function(p){ var k = SV_LABEL[p.type] || p.type; cnt[k] = (cnt[k]||0) + 1; });
+  var h = '<label class="sub" for="svPick">מה לבדוק</label>' +
+    '<select id="svPick" onchange="SV.pick=this.value;svDraw()" style="min-height:44px;font:inherit;font-size:16px;padding:0 10px;border:1px solid var(--line);border-radius:12px;background:#fff;max-width:100%">'+opts+'</select>' +
+    '<p class="sub">'+list.length+' פריטים · '+Object.keys(cnt).map(function(k){ return k+' '+cnt[k]; }).join(" · ") +
+    ' · <b style="color:'+(bad?'var(--bad)':'var(--ok)')+'">'+(bad ? bad+' חשודים' : 'אין פריטים חשודים')+'</b></p>';
+  h += rows.map(function(r){
+    var p = r.p;
+    return '<div style="border:1px solid '+(r.f.length?'var(--bad)':'var(--line)')+';border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:4px">' +
+      '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"><span class="pill '+(r.f.length?'back':'live')+'">'+esc(SV_LABEL[p.type]||p.type)+'</span><b>'+esc(p.title)+'</b></div>' +
+      '<div class="sub">נושא הבית: '+esc(tname(p.topic)) + ((p.also||[]).length ? ' · גם ב: '+p.also.map(function(a){ return esc(tname(a)); }).join(", ") : "")+'</div>' +
+      r.f.map(function(x){ return '<div style="color:var(--bad);font-size:14px">⚠ '+esc(x)+'</div>'; }).join("") +
+      '</div>';
+  }).join("") || '<p class="sub">אין מה להציג.</p>';
+  h += '<p class="sub" style="font-size:13px">תרגולים שהצוות העלה דרך "תרגול חדש" אינם כאן: הם בלשונית "לאישור".</p>';
+  el.innerHTML = h;
 }
 function go(t){
   /* תכנון השבועות הוא דף באתר האתר עצמו: נפתח בלשונית חדשה, עם הטוקן האישי כדי שיהיה אפשר לערוך */
