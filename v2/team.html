@@ -362,6 +362,7 @@ function render(){
   var tabs = [["new","תרגול חדש"],["mine","התרגולים שלי"]];
   if(ME.approver){ tabs.push(["review","לאישור"]); tabs.push(["boger","בוגר סביון"]); }
   if(ME.mahalach) tabs.push(["mahalach","המהלך השנתי"]);
+  if(ME.approver) tabs.push(["feedback","פידבק וקליקים"]);
   if(ME.approver) tabs.push(["tichnun","תכנון השבועות ↗"]);
   if(ME.manager) tabs.push(["usage","שימוש"]);
   if(ME.manager) tabs.push(["settings","הגדרות"]);
@@ -375,6 +376,7 @@ function render(){
   else if(TAB === "mine") renderMine();
   else if(TAB === "boger") renderBoger();
   else if(TAB === "usage") renderUsage();
+  else if(TAB === "feedback") renderFeedback();
   else if(TAB === "settings") renderSettings();
   else if(TAB === "mahalach") renderMahalach();
   else renderReview();
@@ -1149,6 +1151,45 @@ function sendTichnunLinks(){
   });
 }
 function cp(t){ navigator.clipboard.writeText(t).then(function(){ showOk("הועתק."); }); }
+
+/* ── פידבק על תרגולים, לצוות המוביל ──────────────────────────── */
+var FBK = null, FBK_S = "avg";
+function renderFeedback(){
+  $("pane").innerHTML = '<div class="card"><h2>פידבק וקליקים על התרגולים</h2><div id="fbk">רגע, סופר...</div><div class="msg" id="msg" hidden></div></div>';
+  srv("apiFeedbackBoard", function(d){ FBK = d; drawFeedback(); }, [auth()]);
+}
+function drawFeedback(){
+  var d = FBK;
+  if(!d.total && !d.items.length){ $("fbk").innerHTML = '<p class="hint">עוד אין נתונים. הפידבק נאסף בטופס שבסוף כל תרגול באתר הפנקס, והקליקים נספרים מהכניסות לאתר.</p>'; return; }
+  var items = d.items.slice().sort(function(a,b){
+    if(FBK_S === "avg") return (b.avg||0) - (a.avg||0) || b.used - a.used;
+    if(FBK_S === "used") return b.used - a.used || b.n - a.n;
+    if(FBK_S === "clicks") return (b.clicks||0) - (a.clicks||0) || b.n - a.n;
+    return b.n - a.n; });
+  var h = '<div class="chips" role="group" aria-label="מיון">' +
+    [["clicks","לפי קליקים"],["avg","לפי דירוג"],["used","לפי כמה השתמשו"],["n","לפי מספר תשובות"]].map(function(x){
+      return '<button type="button" class="chip" aria-pressed="'+(FBK_S===x[0])+'" onclick="FBK_S=\''+x[0]+'\';drawFeedback()">'+x[1]+'</button>'; }).join("") + '</div>' +
+    '<div class="use-sum"><div><b>'+d.total+'</b><span>תשובות</span></div>' +
+    '<div><b>'+d.used+'</b><span>"השתמשתי"</span></div>' +
+    '<div><b>'+(d.avgAll ? d.avgAll.toFixed(1) : "·")+'</b><span>דירוג ממוצע ('+d.ratedN+')</span></div></div>' +
+    '<p class="hint">הפידבק אנונימי. תרגול עם פחות מ-'+d.minGroup+' תשובות, או פחות מ-'+d.minGroup+' דירוגים, לא מוצג בנפרד כדי לשמור על האנונימיות.</p>';
+  h += items.length ? items.map(function(t){
+    var bits = [t.n+' תשובות', t.used+' השתמשו'];
+    if(t.notyet) bits.push(t.notyet+' עוד לא'); if(t.na) bits.push(t.na+' לא מתאים');
+    var ck = [];
+    if(t.open) ck.push(t.open+' פתיחות'); if(t.show) ck.push(t.show+' הקרנות'); if(t.did) ck.push(t.did+' "עשיתי"');
+    return '<div class="uitem"><div class="bd"><span class="t">'+esc(t.title)+(t.avg ? ' · '+t.avg.toFixed(1)+' ★' : '')+'</span>' +
+      '<span class="s">'+(ck.length ? 'ב-'+d.days+' הימים האחרונים: '+ck.join(' · ') : 'אין קליקים ב-'+d.days+' הימים האחרונים')+'</span>' +
+      (t.n ? '<span class="s">'+bits.join(' · ')+'</span>' : '') +
+      t.notes.map(function(x){ return '<span class="s">• '+esc(x)+'</span>'; }).join("") + '</div></div>';
+  }).join("") : '<p class="hint">עוד אין תרגול עם מספיק תשובות להצגה נפרדת.</p>';
+  if(d.small){
+    h += '<p class="hint">עוד '+d.small+' תשובות על תרגולים עם פחות מ-'+d.minGroup+' תשובות כל אחד נספרות בסיכום בלבד.</p>';
+    if(d.smallNotes.length) h += '<h3>הערות נוספות</h3>' + d.smallNotes.map(function(x){ return '<p class="s">• '+esc(x)+'</p>'; }).join("");
+  }
+  h += '<div class="row"><a class="btn3" style="display:inline-flex;align-items:center;text-decoration:none" href="'+esc(d.sheetUrl)+'" target="_blank">הגיליון המלא</a></div>';
+  $("fbk").innerHTML = h;
+}
 
 /* ── הגדרות, לשחף בלבד ─────────────────────────────────────── */
 function renderSettings(){

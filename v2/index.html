@@ -526,7 +526,7 @@ function renderCover(){
         <div class="nb-acts">
           <button type="button" class="btn gold" data-act="surprise" title="תרגול נוכחות קצר, בהגרלה">הנני כאן</button>
           <a class="btn onpurple" href="team.html#new">הוספת תרגול</a>
-          <a class="btn onpurple" href="team.html">כניסת צוות</a>
+          <a class="btn onpurple" href="team.html">צוות מוביל</a>
         </div>
         <div class="nb-count">${inM.length} תרגולים</div>
       </div>
@@ -1235,6 +1235,7 @@ const FB_KEY = 'pinkasV2Fb';
 let FB = {}; try{ FB = JSON.parse(localStorage.getItem(FB_KEY)||'{}'); }catch(e){}
 const FB_STATE = {use:'', rating:0};
 function fbHtml(p){
+  FB_STATE.use = ''; FB_STATE.rating = 0;   /* טופס חדש לכל תרגול, אחרת דירוג מהתרגול הקודם נשלח כאן */
   if(FB[p.id]) return `<section class="fb" aria-label="פידבק"><p class="st ok" role="status">תודה, הפידבק שלך התקבל.</p></section>`;
   const U = [['used','השתמשתי'],['notyet','עוד לא'],['na','לא מתאים לי']];
   return `<section class="fb" aria-label="פידבק אנונימי" id="fb">
