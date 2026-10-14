@@ -113,6 +113,10 @@
   .pill.wait{background:#FFF1D6;color:var(--warn)}
   .pill.live{background:#E3F4EA;color:var(--ok)}
   .pill.back{background:#FBE3E6;color:var(--bad)}
+  .svrow{font:inherit;color:inherit;text-align:start;width:100%;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;cursor:pointer}
+  .svrow:hover,.svrow:focus-visible{background:var(--soft)}
+  .svgo{margin-inline-start:auto;color:var(--brand);font-size:13px;font-weight:700}
+  .svsel{min-height:44px;font:inherit;font-size:16px;padding:0 10px;border:1px solid var(--line);border-radius:12px;background:#fff;max-width:100%}
   .note{background:#FBF3F4;border-inline-start:3px solid #D4607A;border-radius:8px;padding:8px 10px;font-size:14px;white-space:pre-line}
   /* אישור */
   .rv{border:1px solid #EEE8F4;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
@@ -386,19 +390,106 @@ function render(){
   else renderReview();
 }
 
-/* ── בדיקת סיווג (14.10.2026): קריאה בלבד מ-data-v2.js ──────────
+/* ── בדיקת סיווג (14.10.2026) ──────────
    לכל פריט: הסוג, נושא הבית והנושאים הנוספים, וסימון ⚠ כשהסוג לא תואם את התוכן.
-   אותם כללים כמו בסקריפט פנקס תרגולים\בדיקות\בדיקת-סיווג-שבוע.js. */
-var SV = {pick:""};
+   אותם כללים כמו בסקריפט פנקס תרגולים\בדיקות\בדיקת-סיווג-שבוע.js.
+   לחיצה על פריט פותחת אותו במלואו, ושם אפשר לשנות סוג ונושאים. השינוי נשמר בלשונית `סיווג`
+   בגיליון התוספות (apiSivugSave), והאתר מחיל אותו על data-v2.js (applySivug ב-index.html).
+   SV.base הוא הסיווג שבקובץ, לפני השינויים, כדי שאפשר יהיה לחזור אליו. */
+var SV = {pick:"", q:"", base:null, ov:{}, ovErr:false};
+/* מקלידים בלי לאבד את הפוקוס: מציירים מחדש אחרי הפסקה קצרה ומחזירים את הסמן לסוף */
+function svType(v){
+  SV.q = v; clearTimeout(svType.t);
+  svType.t = setTimeout(function(){ svDraw(); var i = $("svQ"); if(i){ i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 250);
+}
 var SV_LABEL = {page:"דף להקרנה", audio:"הקלטה", write:"תרגול כתוב", activity:"פעילות", deck:"מצגת"};
 function renderSivug(){
-  $("pane").innerHTML = '<div class="card"><h2>בדיקת סיווג</h2><p class="sub">איך כל פריט מסווג ולאילו נושאים הוא משויך. קריאה בלבד; תיקון נעשה במקור הנתונים.</p><div id="sv">רגע...</div></div>';
-  if(window.PINKAS && window.PINKAS.practices) return svDraw();
+  $("pane").innerHTML = '<div class="card"><h2>בדיקת סיווג</h2><p class="sub">איך כל פריט מסווג ולאילו נושאים הוא משויך. לוחצים על פריט כדי לראות אותו במלואו ולשנות את הסיווג.</p><div id="sv">רגע...</div></div>';
+  if(window.PINKAS && window.PINKAS.practices && SV.base) return svDraw();
   var s = document.createElement("script");
   s.src = PK_BASE + "data-v2.js?d=" + new Date().toISOString().slice(0,13);
-  s.onload = svDraw;
+  s.onload = svLoadOv;
   s.onerror = function(){ var el = $("sv"); if(el) el.innerHTML = '<div class="msg err">לא הצלחתי לטעון את נתוני הפנקס.</div>'; };
   document.head.appendChild(s);
+}
+/* הסיווג שבקובץ נשמר בצד, ואז נטענים השינויים מהמרחב ומוחלים כמו באתר */
+function svLoadOv(){
+  var D = window.PINKAS;
+  if(!D || !D.practices) return svDraw();
+  SV.base = {};
+  D.practices.forEach(function(p){ SV.base[p.id] = {type:p.type, topic:p.topic, door:p.door, also:(p.also||[]).slice()}; });
+  var cb = "__svOv" + Date.now(), s = document.createElement("script"), done = false;
+  var fin = function(items, err){
+    if(done) return; done = true; delete window[cb]; SV.ovErr = !!err; SV.ov = {};
+    Object.keys(items || {}).forEach(function(id){ if(svApply(id, items[id])) SV.ov[id] = items[id]; });
+    svDraw();
+  };
+  window[cb] = function(d){ fin(d && d.items, false); };
+  s.onerror = function(){ fin({}, true); };
+  setTimeout(function(){ fin({}, true); }, 15000);
+  s.src = GAS + "?api=sivug&callback=" + cb + "&n=" + Date.now();
+  document.body.appendChild(s);
+}
+function svTopic(id){ return (window.PINKAS.topics || []).filter(function(t){ return t.id === id; })[0]; }
+function svPr(id){ return window.PINKAS.practices.filter(function(p){ return p.id === id; })[0]; }
+/* o = {type, topic, also} או null (חזרה לקובץ). אותו כלל כמו applySivug באתר. */
+function svApply(id, o){
+  var p = svPr(id), b = SV.base[id]; if(!p || !b) return false;
+  var src = o || b, t = svTopic(src.topic); if(!t) return false;
+  p.type = src.type || b.type; p.topic = t.id; p.door = t.door;
+  var also = (src.also || []).filter(function(x){ return x !== t.id && svTopic(x); });
+  if(also.length) p.also = also; else delete p.also;
+  return true;
+}
+function svOpen(id){
+  var p = svPr(id); if(!p) return;
+  var F = p.full || {}, o = SV.ov[id], b = SV.base[id] || {};
+  var img = p.img ? new URL(p.img, PK_BASE).href : "", file = p.file ? new URL(p.file, PK_BASE).href : "";
+  var para = function(k, v){ return v ? '<p style="margin:6px 0"><b>'+k+':</b> '+esc(v)+'</p>' : ""; };
+  var tps = window.PINKAS.topics.slice().sort(function(a,c){ return a.title.localeCompare(c.title, "he"); });
+  var also = p.also || [];
+  var h = '<div style="display:flex;flex-direction:column;gap:6px;padding-top:6px">' +
+    (p.what ? '<p class="sub" style="margin:0">'+esc(p.what)+'</p>' : '') +
+    (img ? '<img src="'+esc(img)+'" alt="" style="max-width:100%;border-radius:12px;border:1px solid var(--line)">' : '') +
+    (file ? '<a class="btn2" href="'+esc(file)+'" target="_blank" rel="noopener">לפתיחת הקובץ</a>' : '') +
+    para("מטרה", F.goal) + para("הכנה", F.prep) +
+    ((F.steps||[]).length ? '<b>שלבים</b><ol style="margin:0;padding-inline-start:22px">'+F.steps.map(function(x){ return '<li style="margin:3px 0">'+esc(x)+'</li>'; }).join("")+'</ol>' : '') +
+    (F.text ? '<b>הטקסט</b><div style="white-space:pre-wrap;background:#FAF7FD;border-radius:12px;padding:10px">'+esc(F.text)+'</div>' : '') +
+    para("שאלות", F.questions) + para("סגירה", F.closing) + para("שימו לב", p.note) +
+    '<p class="sub" style="margin:0">'+[p.layer, p.minutes ? p.minutes+" דק׳" : "", p.voice].filter(Boolean).map(esc).join(" · ")+'</p>' +
+    '<div style="border-top:1px solid var(--line);margin-top:8px;padding-top:10px;display:flex;flex-direction:column;gap:8px">' +
+    '<h3 style="margin:0;font-size:17px">הסיווג</h3>' +
+    (o ? '<p class="sub" style="margin:0">שונה במרחב על ידי '+esc(o.by||"")+(o.updated?' · '+esc(o.updated):'')+'. בקובץ המקורי: '+esc(SV_LABEL[b.type]||b.type)+', '+esc((svTopic(b.topic)||{}).title||"")+'.</p>' : '') +
+    '<label class="sub" for="svT">סוג</label><select id="svT" class="svsel">' + Object.keys(SV_LABEL).map(function(k){ return '<option value="'+k+'"'+(p.type===k?' selected':'')+'>'+SV_LABEL[k]+'</option>'; }).join("") + '</select>' +
+    '<label class="sub" for="svH">נושא הבית</label><select id="svH" class="svsel">' + tps.map(function(t){ return '<option value="'+t.id+'"'+(p.topic===t.id?' selected':'')+'>'+esc(t.title)+'</option>'; }).join("") + '</select>' +
+    '<span class="sub">מופיע גם בנושאים</span><div id="svA" style="display:flex;flex-direction:column;gap:2px;max-height:220px;overflow-y:auto;border:1px solid var(--line);border-radius:12px;padding:6px 10px">' +
+      tps.map(function(t){ return '<label style="display:flex;gap:8px;align-items:center;min-height:36px"><input type="checkbox" value="'+t.id+'"'+(also.indexOf(t.id)>=0?' checked':'')+'> '+esc(t.title)+'</label>'; }).join("") + '</div>' +
+    '<p class="sub" style="margin:0;font-size:13px">"דף להקרנה" הוא תמונה או קובץ, "פעילות" היא שלבים, "תרגול כתוב" הוא טקסט שמקריאים. השינוי מגיע לאתר תוך כשתי דקות.</p>' +
+    '<div class="msg" id="emsg" hidden></div>' +
+    '<div class="row"><button class="btn" id="svSave" onclick="svSave(\''+esc(id)+'\')">שמירת הסיווג</button>' +
+    (o ? '<button class="btn2" onclick="svSave(\''+esc(id)+'\', true)">חזרה לסיווג המקורי</button>' : '') + '</div>' +
+    '</div></div>';
+  openSheet(p.title, h);
+}
+function svSave(id, reset){
+  var p = svPr(id), b = SV.base[id]; if(!p || !b) return;
+  var data = null;
+  if(!reset){
+    var topic = $("svH").value;
+    var also = [].slice.call(document.querySelectorAll("#svA input:checked")).map(function(x){ return x.value; }).filter(function(x){ return x !== topic; });
+    data = {type:$("svT").value, topic:topic, also:also};
+    /* אותו סיווג כמו בקובץ: אין מה לשמור, ושורה קיימת נמחקת */
+    var same = data.type === b.type && data.topic === b.topic && also.slice().sort().join() === (b.also||[]).slice().sort().join();
+    if(same) data = null;
+    if(!data && !SV.ov[id]){ closeSheet(); return; }
+  }
+  var btn = $("svSave"); if(btn){ btn.disabled = true; btn.textContent = "שומר..."; }
+  srv("apiSivugSave", function(r){
+    svApply(id, data);
+    if(data){ data.by = r.by; data.updated = r.updated; SV.ov[id] = data; } else delete SV.ov[id];
+    closeSheet(); svDraw();
+    notify(data ? "הסיווג נשמר. באתר הוא יופיע תוך כשתי דקות." : "חזר לסיווג המקורי.");
+  }, [auth(), id, data, p.title], function(e){ if(btn){ btn.disabled = false; btn.textContent = "שמירת הסיווג"; } showErr(e); });
 }
 function svFlags(p, topic){
   var f = [], full = p.full || {}, steps = full.steps && full.steps.length;
@@ -425,31 +516,51 @@ function svDraw(){
     SV.pick = cur ? "w:" + cur.from : (weeks[0] ? "w:" + weeks[0].from : "all");
   }
   var dm = function(s){ var p = s.split("-"); return Number(p[2]) + "." + Number(p[1]); };
-  var opts = weeks.map(function(w){
-    return '<option value="w:'+w.from+'"'+(SV.pick==="w:"+w.from?" selected":"")+'>שבוע '+dm(w.from)+'-'+dm(w.to)+': '+esc(tname(w.topic))+'</option>';
-  }).join("") + '<option value="flag"'+(SV.pick==="flag"?" selected":"")+'>כל הפנקס: רק פריטים חשודים</option>' +
-    '<option value="all"'+(SV.pick==="all"?" selected":"")+'>כל הפנקס</option>';
-  var list;
-  if(SV.pick.indexOf("w:") === 0){
+  /* שבוע הוא נושא אחד (topic) או שלב במהלך השנתי עם כמה נושאים (topics, 14.10.2026) */
+  var wTopics = function(w){ return w.topics || (w.topic ? [w.topic] : []); };
+  var inAny = function(p, ids){ return ids.indexOf(p.topic) >= 0 || (p.also||[]).some(function(a){ return ids.indexOf(a) >= 0; }); };
+  var sel = function(v){ return SV.pick === v ? " selected" : ""; };
+  var opts = '<optgroup label="לפי שבוע">' + weeks.map(function(w){
+    var tag = w.from <= today && today <= w.to ? " (השבוע)" : (w.from > today ? " (בהמשך)" : "");
+    return '<option value="w:'+w.from+'"'+sel("w:"+w.from)+'>שבוע '+dm(w.from)+'-'+dm(w.to)+': '+esc(w.title || tname(w.topic))+tag+'</option>';
+  }).join("") + '</optgroup><optgroup label="לפי נושא">' +
+    D.topics.slice().sort(function(a,b){ return a.title.localeCompare(b.title, "he"); }).map(function(t){
+      return '<option value="t:'+t.id+'"'+sel("t:"+t.id)+'>'+esc(t.title)+'</option>';
+    }).join("") + '</optgroup><optgroup label="כל הפנקס">' +
+    '<option value="flag"'+sel("flag")+'>רק פריטים חשודים</option><option value="all"'+sel("all")+'>הכול</option></optgroup>';
+  var list, q = (SV.q || "").trim();
+  if(q){
+    /* חיפוש לפי שם, בכל הפנקס: שם התרגול, או שם נושא שהוא בו (למשל "כוחה של מילה") */
+    list = D.practices.filter(function(p){
+      return (p.title||"").indexOf(q) >= 0 || [p.topic].concat(p.also||[]).some(function(a){ return tname(a).indexOf(q) >= 0; });
+    });
+  } else if(SV.pick.indexOf("w:") === 0){
     var w = weeks.filter(function(x){ return "w:" + x.from === SV.pick; })[0];
-    list = D.practices.filter(function(p){ return p.topic === w.topic || (p.also||[]).indexOf(w.topic) >= 0; });
+    list = w ? D.practices.filter(function(p){ return inAny(p, wTopics(w)); }) : [];
+  } else if(SV.pick.indexOf("t:") === 0){
+    list = D.practices.filter(function(p){ return inAny(p, [SV.pick.slice(2)]); });
   } else list = D.practices;
   var rows = list.map(function(p){ return {p:p, f:svFlags(p, topic)}; });
   var bad = rows.filter(function(r){ return r.f.length; }).length;
   if(SV.pick === "flag") rows = rows.filter(function(r){ return r.f.length; });
   var cnt = {}; list.forEach(function(p){ var k = SV_LABEL[p.type] || p.type; cnt[k] = (cnt[k]||0) + 1; });
   var h = '<label class="sub" for="svPick">מה לבדוק</label>' +
-    '<select id="svPick" onchange="SV.pick=this.value;svDraw()" style="min-height:44px;font:inherit;font-size:16px;padding:0 10px;border:1px solid var(--line);border-radius:12px;background:#fff;max-width:100%">'+opts+'</select>' +
-    '<p class="sub">'+list.length+' פריטים · '+Object.keys(cnt).map(function(k){ return k+' '+cnt[k]; }).join(" · ") +
+    '<select id="svPick" onchange="SV.pick=this.value;SV.q=\'\';svDraw()" style="min-height:44px;font:inherit;font-size:16px;padding:0 10px;border:1px solid var(--line);border-radius:12px;background:#fff;max-width:100%">'+opts+'</select>' +
+    '<label class="sub" for="svQ">או חיפוש לפי שם</label>' +
+    '<input id="svQ" type="search" value="'+esc(q)+'" placeholder="למשל: כוחה של מילה" oninput="svType(this.value)" style="min-height:44px;font:inherit;font-size:16px;padding:0 10px;border:1px solid var(--line);border-radius:12px;background:#fff;max-width:100%">' +
+    '<p class="sub">'+(q ? 'חיפוש "'+esc(q)+'": ' : '')+list.length+' פריטים · '+Object.keys(cnt).map(function(k){ return k+' '+cnt[k]; }).join(" · ") +
     ' · <b style="color:'+(bad?'var(--bad)':'var(--ok)')+'">'+(bad ? bad+' חשודים' : 'אין פריטים חשודים')+'</b></p>';
   h += rows.map(function(r){
     var p = r.p;
-    return '<div style="border:1px solid '+(r.f.length?'var(--bad)':'var(--line)')+';border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:4px">' +
-      '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"><span class="pill '+(r.f.length?'back':'live')+'">'+esc(SV_LABEL[p.type]||p.type)+'</span><b>'+esc(p.title)+'</b></div>' +
-      '<div class="sub">נושא הבית: '+esc(tname(p.topic)) + ((p.also||[]).length ? ' · גם ב: '+p.also.map(function(a){ return esc(tname(a)); }).join(", ") : "")+'</div>' +
-      r.f.map(function(x){ return '<div style="color:var(--bad);font-size:14px">⚠ '+esc(x)+'</div>'; }).join("") +
-      '</div>';
+    var o = SV.ov[p.id];
+    return '<button type="button" class="svrow" onclick="svOpen(\''+esc(p.id)+'\')" style="border-color:'+(r.f.length?'var(--bad)':'var(--line)')+'">' +
+      '<span style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"><span class="pill '+(r.f.length?'back':'live')+'">'+esc(SV_LABEL[p.type]||p.type)+'</span><b>'+esc(p.title)+'</b>' +
+      (o ? '<span class="pill wait">שונה במרחב · '+esc(o.by||"")+'</span>' : '') + '<span class="svgo">לצפייה ולשינוי ←</span></span>' +
+      '<span class="sub">נושא הבית: '+esc(tname(p.topic)) + ((p.also||[]).length ? ' · גם ב: '+p.also.map(function(a){ return esc(tname(a)); }).join(", ") : "")+'</span>' +
+      r.f.map(function(x){ return '<span style="color:var(--bad);font-size:14px">⚠ '+esc(x)+'</span>'; }).join("") +
+      '</button>';
   }).join("") || '<p class="sub">אין מה להציג.</p>';
+  if(SV.ovErr) h += '<p class="sub" style="color:var(--bad)">לא הצלחתי לטעון את השינויים שנעשו במרחב, ולכן מוצג הסיווג המקורי.</p>';
   h += '<p class="sub" style="font-size:13px">תרגולים שהצוות העלה דרך "תרגול חדש" אינם כאן: הם בלשונית "לאישור".</p>';
   el.innerHTML = h;
 }

@@ -1353,6 +1353,29 @@ function forgetUser(){
   render();
 }
 
+/* סיווג מהמרחב (14.10.2026): הצוות המוביל משנה סוג, נושא בית ונושאים נוספים בלשונית "בדיקת סיווג".
+   הבסיס הוא הקובץ הזה; השינויים מגיעים מ-?api=sivug ומוחלים עליו. בלי רשת נשאר הבסיס. */
+function applySivug(items){
+  let any = false;
+  Object.keys(items || {}).forEach(id=>{
+    const p = byId(id), o = items[id]; if(!p || !o) return;
+    const t = topicOf(o.topic); if(!t) return;  /* נושא שנמחק: נשארים עם הבסיס */
+    if(o.type) p.type = o.type;
+    p.topic = t.id; p.door = t.door;
+    const also = (o.also || []).filter(x=>x!==t.id && topicOf(x));
+    if(also.length) p.also = also; else delete p.also;
+    any = true;
+  });
+  return any;
+}
+function fetchSivug(){
+  window.__pinkasSivug = function(d){ if(d && applySivug(d.items)) render(); };
+  const s = document.createElement('script');
+  s.src = ADD_URL + '?api=sivug&callback=__pinkasSivug';
+  s.onerror = function(){};
+  document.body.appendChild(s);
+}
+
 /* זמן לפי הצוות: לתרגול בלי זמן במקור, החציון של מה שהמורים סימנו ב"עשיתי" */
 function fetchMinutes(){
   window.__pinkasMin = function(d){
@@ -1425,6 +1448,7 @@ render();
 fetchAdds();
 fetchBoger();
 fetchMahalach();
+fetchSivug();
 fetchMinutes();
 track('visit', null);
 flushUse();
