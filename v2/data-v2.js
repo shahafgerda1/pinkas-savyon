@@ -1,6 +1,6 @@
 /* נבנה אוטומטית ב-build_v2.py. לא לערוך ידנית. */
 window.PINKAS = {
- "built": "2026-10-09",
+ "built": "2026-10-11",
  "doors": [
   {
    "n": 1,
@@ -631,7 +631,8 @@ window.PINKAS = {
    "houses": [],
    "audience": [],
    "also": [
-    "cchekin"
+    "cchekin",
+    "t20"
    ]
   },
   {
