@@ -422,7 +422,7 @@ function sortForMode(list){
   return decksFirst(list);
 }
 /* המצגות תמיד בראש החומרים של נושא ושל שלב (שחף, 16.10.2026); המיון יציב, ולכן שאר הסדר נשמר */
-function decksFirst(list){ return list.slice().sort((a,b)=>(b.type==='deck'?1:0)-(a.type==='deck'?1:0)); }
+function decksFirst(list){ const k = p => p.onDemand ? 2 : (p.type==='deck' ? 0 : 1); return list.slice().sort((a,b)=>k(a)-k(b)); }
 
 /* ---------- זרע יומי: התרגול של היום והכנפיים המסתתרות ---------- */
 function todayKey(){ const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
@@ -732,7 +732,7 @@ function stepLive(st){ return MH_LIVE[st.i] || null; }
 function stepChosen(st){ const l = stepLive(st); return !!(l && l.practices && l.practices.length); }
 function stepPractices(st){
   if(stepChosen(st)) return stepLive(st).practices.map(byId).filter(Boolean);
-  return D.practices.filter(p=>st.topics.includes(p.topic) || st.topics.includes(topicAlias(p.topic)));
+  return D.practices.filter(p=>st.topics.some(id=>inTopic(p,id)) || st.topics.includes(topicAlias(p.topic)));
 }
 const MONTH_NAME = {9:'ספטמבר',10:'אוקטובר',11:'נובמבר',12:'דצמבר',1:'ינואר',2:'פברואר',3:'מרץ',4:'אפריל',5:'מאי',6:'יוני',7:'יולי',8:'אוגוסט'};
 function stepMonths(st){ const l = stepLive(st); return (l && l.months) || []; }
