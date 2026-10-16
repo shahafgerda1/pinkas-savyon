@@ -418,9 +418,11 @@ function visible(p, type){ type = type||PREF.type; return inMode(p) && (type==='
 /* סדרה לבית אחד ולפי דרישה (מסע הקברניט, צעירים): נשארת בנושא, אבל בסוף הרשימה ולא בכריכה */
 function sortForMode(list){
   list = list.slice().sort((a,b)=>(a.onDemand?1:0)-(b.onDemand?1:0));
-  if(curMode()!=='student') return list;
-  return list.slice().sort((a,b)=>((b.audience||[]).includes('student')?1:0)-((a.audience||[]).includes('student')?1:0));
+  if(curMode()==='student') list.sort((a,b)=>((b.audience||[]).includes('student')?1:0)-((a.audience||[]).includes('student')?1:0));
+  return decksFirst(list);
 }
+/* המצגות תמיד בראש החומרים של נושא ושל שלב (שחף, 16.10.2026); המיון יציב, ולכן שאר הסדר נשמר */
+function decksFirst(list){ return list.slice().sort((a,b)=>(b.type==='deck'?1:0)-(a.type==='deck'?1:0)); }
 
 /* ---------- זרע יומי: התרגול של היום והכנפיים המסתתרות ---------- */
 function todayKey(){ const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
@@ -758,7 +760,7 @@ function renderStep(i){
   const live = stepLive(st), chosen = stepChosen(st);
   /* בחירה של חן נשארת בסדר שלה; ההצעה לפי נושא ממוינת כמו בכל מקום */
   let list = stepPractices(st).filter(p=>visible(p));
-  if(!chosen) list = sortForMode(list);
+  list = chosen ? decksFirst(list) : sortForMode(list);
   const starter = chosen && live.starter ? list.find(p=>p.id===live.starter) : null;
   const rest = starter ? list.filter(p=>p!==starter) : list;
   const mo = stepMonths(st).map(m=>MONTH_NAME[m]).join(', ');
@@ -1368,8 +1370,10 @@ function applySivug(items){
   });
   return any;
 }
+/* הסיווג והתוספות מגיעים בבקשות נפרדות. סיווג של תוספת שעוד לא נטענה נשמר כאן ומוחל שוב ב-applyAdds */
+let SIVUG = null;
 function fetchSivug(){
-  window.__pinkasSivug = function(d){ if(d && applySivug(d.items)) render(); };
+  window.__pinkasSivug = function(d){ if(!d) return; SIVUG = d.items || null; if(applySivug(SIVUG)) render(); };
   const s = document.createElement('script');
   s.src = ADD_URL + '?api=sivug&callback=__pinkasSivug';
   s.onerror = function(){};
@@ -1434,6 +1438,7 @@ function applyAdds(rows){
       layer:a.layer||'', houses:LAYER_HOUSES[a.layer]||[], audience:a.audience||[], minutes:a.minutes||'',
       why:a.why||'', by:a.by||'', approvedBy:a.approvedBy||'', note:a.note||'', editedBy:a.editedBy||''});
   });
+  if(SIVUG) applySivug(SIVUG);
   render();
 }
 function fetchAdds(){
