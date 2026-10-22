@@ -1439,9 +1439,18 @@ function applyAdds(rows){
     const door = Number(a.door) || wDoor[a.world];
     if(!door) return;
     /* נושא שהצוות פתח בשם של נושא קיים מצטרף אליו, ולא מופיע פעמיים */
-    let t = topicOf(a.topicId) || D.topics.find(x=>a.topicTitle && x.title===a.topicTitle);
+    /* נושא שהצוות פתח (staff_dN) מקבל מהשרת אותו מזהה לכל נושא חדש באותו חדר,
+       ולכן מזהים אותו לפי מזהה ושם יחד, ולא לפי שם בלבד בכל החדרים: אחרת
+       "נקודות מבט שונות" של אילנה נתלה על "כוחה של מילה" או על חדר אחר (22.10.2026) */
+    const staffTopic = /^staff_d/.test(a.topicId||'');
+    const tTitle = a.topicTitle || 'מהצוות';
+    let t = staffTopic
+      ? D.topics.find(x=>x.door===door && x.staffOf===a.topicId && x.title===tTitle)
+      : (topicOf(a.topicId) || D.topics.find(x=>a.topicTitle && x.title===a.topicTitle));
     if(!t){
-      t = {id:a.topicId || ('staff_d'+door), title:a.topicTitle || 'מהצוות', door:door, description:''};
+      let id = a.topicId || ('staff_d'+door);
+      if(staffTopic) for(let i=2; topicOf(id); i++) id = a.topicId+'_'+i;
+      t = {id:id, title:tTitle, door:door, description:'', staffOf: staffTopic ? a.topicId : ''};
       D.topics.push(t);
     }
     const docs = (a.docs||[]).filter(d=>d && (d.img||d.file));
