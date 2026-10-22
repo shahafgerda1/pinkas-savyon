@@ -879,13 +879,30 @@ function renderA11y(){
 
 /* ---------- חיפוש ---------- */
 function norm(s){ return String(s||'').replace(/[֑-ׇ"'׳״]/g,'').toLowerCase(); }
+/* אותיות סופיות לרגילות, כדי ש"חלון" ימצא גם את "חלונות" */
+function finals(s){ return s.replace(/[ךםןףץ]/g,c=>({'ך':'כ','ם':'מ','ן':'נ','ף':'פ','ץ':'צ'})[c]); }
+/* גזע גס ליחיד/רבים/נסמך: "נקודת", "נקודות", "נקודה" -> "נקוד" */
+function stem(w){
+  w = finals(w);
+  if(w.length>=6 && /יות$/.test(w)) return w.slice(0,-3);
+  if(w.length>=5 && /(ות|ים)$/.test(w)) return w.slice(0,-2);
+  if(w.length>=4 && /[תהי]$/.test(w)) return w.slice(0,-1);
+  return w;
+}
+/* מילה נמצאת אם הגזע שלה מופיע, או הגזע בלי אות שימוש בראשה ("בנשימה" -> "נשימה") */
+function wordHit(hay, w){
+  if(hay.includes(stem(w))) return true;
+  return w.length>=5 && /^[הובלמשכ]/.test(w) && hay.includes(stem(w.slice(1)));
+}
 function renderSearch(qs){
   const words = norm(qs).split(/\s+/).filter(Boolean);
   const hits = !words.length ? [] : D.practices.filter(p=>inMode(p)).filter(p=>{
-    const hay = norm([p.title,p.what,p.note,(p.full||{}).goal,(p.full||{}).prep,(topicOf(p.topic)||{}).title,doorOf(p.door).title,TYPE_LABEL[p.type],p.layer].join(' '));
-    return words.every(w=>hay.includes(w));
+    const F = p.full||{};
+    const hay = finals(norm([p.title,p.what,p.note,F.goal,F.prep,F.text,F.closing,F.tip,[].concat(F.steps||[],F.questions||[]).join(' '),(topicOf(p.topic)||{}).title,doorOf(p.door).title,TYPE_LABEL[p.type],p.layer].join(' ')));
+    return words.every(w=>wordHit(hay,w));
   });
-  hits.sort((a,b)=>(norm(b.title).includes(words[0]||'')?1:0)-(norm(a.title).includes(words[0]||'')?1:0));
+  const inTitle = p=>words.every(w=>wordHit(finals(norm(p.title)),w))?1:0;
+  hits.sort((a,b)=>inTitle(b)-inTitle(a));
   app.innerHTML = `<main class="wrap" id="main">
     ${homeWing()}
     ${backLink('#/','חזרה לכריכה')}
