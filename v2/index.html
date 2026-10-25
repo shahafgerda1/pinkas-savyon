@@ -448,7 +448,7 @@ function render(){
   closeShowDom();
   if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(()=>{});
   if(parts[0]==='door' && doorOf(+parts[1])) renderDoor(+parts[1], q.get('t')||'');
-  else if(parts[0]==='p' && byId(parts[1])) renderPractice(byId(parts[1]));
+  else if(parts[0]==='p' && byId(parts[1])) renderPractice(byId(parts[1]), +(q.get('d')||0));
   else if(parts[0]==='search') renderSearch(q.get('q')||'');
   else if(parts[0]==='topic' && topicOf(parts[1])) renderTopic(parts[1]);
   else if(parts[0]==='step' && STEPS[(+parts[1]||0)-1]) renderStep(+parts[1]);
@@ -479,16 +479,29 @@ function backLink(href, label){ return `<a class="back" href="${href}">${ICON_BA
 function imgSrc(p){ return p.img || (p.docs&&p.docs[0]&&p.docs[0].img) || ''; }
 function houseLabel(p){ return p.layer || ''; }
 
+/* תרגול של כמה מסמכים (מצגת ומדריך למורה לכל בית) נפרש בגריד לכרטיס לכל מסמך, שנפתח ישר עליו
+   (25.10.2026, בקשת שחף: בתרגול השבועי לא נראו המצגות ומדריכי המורה של אילנה, רק כרטיס אחד) */
+function docCards(list){
+  const out = [];
+  list.forEach(p=>{
+    if(!(p.docs && p.docs.length>1 && (p.type==='deck' || p.type==='page'))){ out.push(p); return; }
+    p.docs.forEach((d,i)=>out.push(Object.assign({}, p, {title:d.name||(p.title+' '+(i+1)), img:d.img||'', file:d.file||'',
+      docs:null, _doc:i, _guide:/מדריך/.test(d.name||'')})));
+  });
+  return out;
+}
+function cardsHtml(list){ return docCards(list).map(cardHtml).join(''); }
 function cardHtml(p){
   const door = doorOf(p.door);
   const src = imgSrc(p);
+  const href = '#/p/'+esc(p.id)+(p._doc!=null ? '?d='+p._doc : '');
   if(src){
-    const badge = p.type==='deck' ? 'מצגת' : (p.docs&&p.docs.length>1 ? p.docs.length+' דפים' : '');
-    return `<a class="card" href="#/p/${esc(p.id)}">
+    const badge = p._guide ? 'מדריך למורה' : p.type==='deck' ? 'מצגת' : (p.docs&&p.docs.length>1 ? p.docs.length+' דפים' : '');
+    return `<a class="card" href="${href}">
       <span class="ph"><img loading="lazy" decoding="async" src="${esc(src)}" alt="" onerror="this.style.visibility='hidden'">${badge?`<span class="badge">${badge}</span>`:''}${markTag(p)}</span>
       <span class="tt">${esc(p.title)}</span>${p.note?`<span class="warnTag">שימו לב</span>`:''}</a>`;
   }
-  return `<a class="card text" href="#/p/${esc(p.id)}">${markTag(p)}
+  return `<a class="card text" href="${href}">${markTag(p)}
     <span class="top"><span class="dot" style="background:${door.color}"></span>${esc(TYPE_LABEL[p.type])}${minsLabel(p)?` · ${esc(minsLabel(p))}`:''}</span>
     <span class="tt">${esc(p.title)}</span>
     <span class="w">${esc(p.what)}</span>
@@ -632,7 +645,7 @@ function renderTopic(tid){
     ${filterLine()}
     ${t.description?`<p class="desc">${esc(t.description)}</p>`:''}
     ${t&&t.materials&&t.materials.length?`<div class="mats"><b>מהחומרים הסגולים:</b>${t.materials.map(m=>`<a class="chip" href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.name)}</a>`).join('')}</div>`:''}
-    ${list.length?`<div class="grid">${list.map(cardHtml).join('')}</div>`:`<div class="empty-note">אין כאן תרגולים מהסוג שנבחר.</div>`}
+    ${list.length?`<div class="grid">${cardsHtml(list)}</div>`:`<div class="empty-note">אין כאן תרגולים מהסוג שנבחר.</div>`}
   </main>`;
 }
 function renderBoger(n, item){
@@ -652,7 +665,7 @@ function renderBoger(n, item){
       <a class="chip" href="#/boger/${n}" aria-current="${!item}">הכול <span class="c">${inPart.length}</span></a>
       ${counts.filter(x=>x.n).map(x=>`<a class="chip" href="#/boger/${n}?i=${x.k}" aria-current="${item===x.k}">${esc(x.txt)} <span class="c">${x.n}</span></a>`).join('')}
     </nav>
-    ${list.length?`<div class="grid">${list.map(cardHtml).join('')}</div>`:`<div class="empty-note">אין כאן תרגולים מהסוג שנבחר.</div>`}
+    ${list.length?`<div class="grid">${cardsHtml(list)}</div>`:`<div class="empty-note">אין כאן תרגולים מהסוג שנבחר.</div>`}
   </main>`;
   const on = app.querySelector('.chips.scroll [aria-current="true"]');
   if(on && item){ const box=on.parentElement; box.scrollLeft += on.getBoundingClientRect().left - box.getBoundingClientRect().left - 16; }
@@ -768,11 +781,11 @@ function renderStep(i){
   app.innerHTML = `<main class="wrap" id="main">
     ${homeWing()}${backLink('#/boger/'+st.part, c ? c.title : 'בוגר סביון')}
     <div class="dhead"><span class="bar" style="background:${c?c.color:'var(--brand)'}"></span><h1>${esc(st.t)}</h1>
-      <div class="m">המהלך השנתי · ${esc(st.domain)} · שלב ${i} מתוך ${STEPS.length}${mo?` · ${esc(mo)}`:''} · ${list.length} תרגולים</div></div>
+      <div class="m">המהלך השנתי · ${esc(st.domain)} · שלב ${i} מתוך ${STEPS.length}${mo?` · ${esc(mo)}`:''} · ${(k=>k>list.length?`${k} פריטים (${list.length} תרגולים, חלקם עם מצגת ומדריך לכל בית)`:`${list.length} תרגולים`)(docCards(list).length)}</div></div>
     ${live && live.note ? `<div class="stepnote">${esc(live.note)}</div>` : ''}
     ${filterLine()}
-    ${starter ? `<section class="starthere" aria-label="מתחילים כאן"><span class="k">מתחילים כאן</span><div class="grid">${cardHtml(starter)}</div></section>` : ''}
-    ${rest.length ? `${starter?'<span class="hint">ועוד בשלב הזה</span>':''}<div class="grid">${rest.map(cardHtml).join('')}</div>` : (starter ? '' : `<div class="empty-note">${live && live.missing ? 'צוות השפה הקשובה מחפש תרגול מתאים לשלב הזה.' : 'עוד אין באתר תרגולים לשלב הזה.'} אפשר להוסיף דרך "הוספת תרגול".</div>`)}
+    ${starter ? `<section class="starthere" aria-label="מתחילים כאן"><span class="k">מתחילים כאן</span><div class="grid">${cardsHtml([starter])}</div></section>` : ''}
+    ${rest.length ? `${starter?'<span class="hint">ועוד בשלב הזה</span>':''}<div class="grid">${cardsHtml(rest)}</div>` : (starter ? '' : `<div class="empty-note">${live && live.missing ? 'צוות השפה הקשובה מחפש תרגול מתאים לשלב הזה.' : 'עוד אין באתר תרגולים לשלב הזה.'} אפשר להוסיף דרך "הוספת תרגול".</div>`)}
     <nav class="row stepnav" aria-label="שלבי המהלך">
       ${prev?`<a class="btn ghost" href="#/step/${prev.i}">→ ${esc(prev.t)}</a>`:''}
       ${next?`<a class="btn ghost" href="#/step/${next.i}">${esc(next.t)} ←</a>`:''}
@@ -838,7 +851,7 @@ function renderDoor(n, tid){
     ${t&&t.description?`<p class="desc">${esc(t.description)}</p>`:''}
     ${t&&t.materials&&t.materials.length?`<div class="mats"><b>מהחומרים הסגולים:</b>${t.materials.map(m=>`<a class="chip" href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.name)}</a>`).join('')}</div>`:''}
     ${t&&t.why?`<div class="box"><h2>למה זה עובד</h2><p>${esc(t.why)}</p></div>`:''}
-    ${list.length?`<div class="grid">${list.map(cardHtml).join('')}</div>`
+    ${list.length?`<div class="grid">${cardsHtml(list)}</div>`
       :`<div class="empty-note">אין כאן תרגולים מהסוג שנבחר. <button type="button" class="chip" data-act="clear">להציג הכול</button></div>`}
   </main>`;
   const on = app.querySelector('.chips.scroll [aria-current="true"]');
@@ -942,16 +955,19 @@ function bylineHtml(p){
   if(!p.by && !p.approvedBy) return '';
   return `<div class="byline"><span>${p.by?`הועלה על ידי ${esc(p.by)}`:'הועלה על ידי הצוות'}${p.editedBy?`, נערך על ידי ${esc(p.editedBy)}`:''}${p.approvedBy?` · אושר על ידי ${esc(p.approvedBy)}`:''}</span></div>`;
 }
-function renderPractice(p){
+let DOC_SEL = 0;  /* המסמך שנבחר בתרגול של כמה מסמכים: ממנו מקרינים ואותו פותחים בלשונית */
+function curDoc(p){ return p.docs && p.docs.length ? p.docs[Math.min(DOC_SEL, p.docs.length-1)] : null; }
+function renderPractice(p, d0){
+  DOC_SEL = p.docs && p.docs.length ? Math.max(0, Math.min(d0||0, p.docs.length-1)) : 0;
   const t = topicOf(p.topic) || {title:doorOf(p.door).title};
   const head = `${homeWing()}${backLink(`#/door/${p.door}?t=${esc(p.topic)}`, t.title)}`;
   let body = '';
   const docs = p.docs && p.docs.length ? p.docs : null;
   if(p.type==='page' || p.type==='deck'){
-    const src = imgSrc(p);
+    const cd = curDoc(p), src = (cd && cd.img) || imgSrc(p), cf = (cd && cd.file) || p.file;
     body = `<div class="ph-wrap print-me">
         ${src?`<img class="hero" id="hero" src="${esc(src)}" alt="${esc(p.title)}" data-act="show">`:''}
-        ${docs&&docs.length>1?`<div class="doc-strip" role="group" aria-label="הדפים בתרגול">${docs.map((d,i)=>`<button type="button" data-doc="${i}" aria-pressed="${i===0}">${esc(d.name||('דף '+(i+1)))}</button>`).join('')}</div>`:''}
+        ${docs&&docs.length>1?`<div class="doc-strip" role="group" aria-label="הדפים בתרגול">${docs.map((d,i)=>`<button type="button" data-doc="${i}" aria-pressed="${i===DOC_SEL}">${esc(d.name||('דף '+(i+1)))}</button>`).join('')}</div>`:''}
       </div>
       <div class="ptitle"><h1>${esc(p.title)}</h1>${tagsHtml(p)}${p.what?`<p class="lead">${esc(p.what)}</p>`:''}</div>
       ${noteBox(p)}
@@ -959,7 +975,7 @@ function renderPractice(p){
         <button type="button" class="btn" data-act="show">${p.type==='deck'?'פתיחת המצגת להקרנה':'הקרנה על הלוח'}</button>
         <div class="row">
           ${p.type==='page'?`<button type="button" class="btn ghost" data-act="print">הדפסה</button>`:''}
-          ${p.type==='deck'&&p.file?`<a class="btn ghost" href="${esc(fileUrl(p.file))}" target="_blank" rel="noopener">פתיחה בלשונית חדשה</a>`:''}
+          ${(p.type==='deck'||(cd&&cd.kind==='מצגת'))&&cf?`<a class="btn ghost" id="openTab" href="${esc(fileUrl(cf))}" target="_blank" rel="noopener">פתיחה בלשונית חדשה</a>`:''}
         </div>
       </div>
       ${whyBox(p)}
@@ -1110,16 +1126,16 @@ function showStep(dir){
   location.replace('#/show/'+n.id+(d?'?d='+d:''));
 }
 function exitShow(){
-  const id = SHOW && SHOW.p.id;
+  const id = SHOW && SHOW.p.id, d = SHOW && SHOW.docs && SHOW.doc ? '?d='+SHOW.doc : '';
   if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(()=>{});
   closeShowDom();
-  location.replace('#/p/'+(id||''));
+  location.replace('#/p/'+(id||'')+d);
 }
-function enterShow(id){
+function enterShow(id, d){
   const el = document.documentElement;
   if(el.requestFullscreen && !document.fullscreenElement) el.requestFullscreen().catch(()=>{});
   track('show', byId(id));
-  go('#/show/'+id);
+  go('#/show/'+id+(d ? '?d='+d : ''));
 }
 /* יציאה ממסך מלא (Esc של הדפדפן) מוציאה גם ממצב ההקרנה */
 document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElement && SHOW) exitShow(); });
@@ -1131,7 +1147,10 @@ app.addEventListener('click', e=>{
   const tm = e.target.closest('[data-time]'); if(tm){ PREF.time=tm.dataset.time; savePref(); render(); return; }
   const dbtn = e.target.closest('[data-doc]');
   if(dbtn){ const p=byId(app.querySelector('main').dataset.id); const d=p.docs[+dbtn.dataset.doc];
+    DOC_SEL = +dbtn.dataset.doc;
     const hero=document.getElementById('hero'); if(hero&&d.img) hero.src=d.img;
+    const ot=document.getElementById('openTab'); if(ot&&d.file) ot.href=fileUrl(d.file);
+    history.replaceState(null,'','#/p/'+p.id+'?d='+DOC_SEL);
     app.querySelectorAll('[data-doc]').forEach(b=>b.setAttribute('aria-pressed', b===dbtn)); return; }
   const a = e.target.closest('[data-act]'); if(!a) return;
   const act = a.dataset.act;
@@ -1147,9 +1166,9 @@ app.addEventListener('click', e=>{
   else if(act==='install'){ doInstall(); }
   else if(act==='show'){ const id=app.querySelector('main').dataset.id; if(!id) return;
     /* בטלפון אין תצוגת PDF בתוך הדף: המצגת נפתחת בלשונית משלה */
-    const p=byId(id), f=p && p.type==='deck' && (p.file || (p.docs&&p.docs[0]&&p.docs[0].file));
+    const p=byId(id), cd=p && curDoc(p), f=p && p.type==='deck' && ((cd && cd.file) || p.file);
     if(f && matchMedia('(pointer:coarse)').matches){ window.open(fileUrl(f),'_blank','noopener'); return; }
-    enterShow(id); }
+    enterShow(id, DOC_SEL); }
   else if(act==='print'){ window.print(); }
   else if(act==='play' && AUDIO){ AUDIO.paused ? AUDIO.play().catch(()=>{}) : AUDIO.pause(); }
 });
