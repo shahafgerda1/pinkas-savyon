@@ -806,8 +806,16 @@ function weeklyHtml(){
   const st = w.step ? STEPS.find(x=>x.i===w.step) : null;
   if(st){
     const n = stepPractices(st).filter(p=>visible(p)).length;
+    /* שבוע על כמה שלבים או נושאים (w.more, 27.10.2026): צ'יפ לכל אחד, עם שמו */
+    const more = [].concat(w.more || []).map(m=>{
+      if(typeof m === 'number'){ const s2 = STEPS.find(x=>x.i===m); if(!s2) return '';
+        return `<a class="chip" href="#/step/${s2.i}">${esc(s2.t)} · ${stepPractices(s2).filter(p=>visible(p)).length}</a>`; }
+      const t2 = topicOf(m); if(!t2) return '';
+      return `<a class="chip" href="#/topic/${esc(t2.id)}">${esc(t2.title)} · ${D.practices.filter(p=>inTopic(p,t2.id) && visible(p)).length}</a>`;
+    }).join('');
+    const first = more ? `${esc(st.t)} · ${n}` : (n ? `לכל ${n} התרגולים` : 'לשלב במהלך השנתי');
     return `<section class="season2" aria-labelledby="h-week"><span class="k">${k}</span><h2 id="h-week">${esc(w.title || st.t)}</h2>${why}
-      <div class="chips"><a class="chip" href="#/step/${st.i}">${n ? `לכל ${n} התרגולים` : 'לשלב במהלך השנתי'}</a></div></section>`;
+      <div class="chips"><a class="chip" href="#/step/${st.i}">${first}</a>${more}</div></section>`;
   }
   const t = topicOf(w.topic); if(!t) return '';
   const n = D.practices.filter(p=>inTopic(p,t.id) && visible(p)).length;
