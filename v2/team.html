@@ -976,7 +976,7 @@ function approve(id){
   var el = $("rv_"+id);
   var d = {approve:true, checks:{clean:el.querySelector(".c1").checked, fit:el.querySelector(".c2").checked, care:el.querySelector(".c3").checked}, why:el.querySelector(".why").value, caution:el.querySelector(".caution").value};
   el.querySelector(".ok").disabled = true;
-  srv("apiDecide", function(){ renderReview(); showOk("פורסם באתר. מי שהעלה קיבל מייל."); }, [auth(), id, d],
+  srv("apiDecide", function(res){ renderReview(); showOk("פורסם באתר. מי שהעלה קיבל מייל."+(res && res.inStep ? " "+res.inStep : "")); }, [auth(), id, d],
       function(e){ rvReady(id); showErr(e); });
 }
 function giveBack(id){
