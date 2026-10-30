@@ -517,6 +517,16 @@ function filterLine(){
   return `<div class="filt"><span>מוצג: ${esc(bits.join(' · '))}${unk}</span><button type="button" data-act="clear">להציג הכול</button></div>`;
 }
 
+/* בכריכה הסינון יושב בתחתית, והמספרים בתרגול השבועי ובדרכים סופרים רק מה שעובר אותו (30.10.2026, בקשת שחף:
+   אצל אילנה הופיע 4 ו-3 במקום 18 ו-9). "בשבילי" אינו כאן כי הלשונית שלו גלויה ממילא */
+function coverFilterLine(){
+  const bits = [];
+  if(PREF.type!=='all') bits.push('רק '+TYPE_LABEL[PREF.type]);
+  if(PREF.time!=='all') bits.push('עד '+PREF.time+' דק׳');
+  if(!bits.length) return '';
+  return `<div class="filt"><span>הספירה באתר מסוננת: ${esc(bits.join(' · '))}. נבחר בעבר ב"לצמצם את הבחירה"</span><button type="button" data-act="clear">להציג הכול</button></div>`;
+}
+
 /* ---------- כריכה ---------- */
 function renderCover(){
   const vis = D.practices.filter(p=>visible(p));
@@ -549,7 +559,7 @@ function renderCover(){
         ${imgSrc(today)?`<img src="${esc(imgSrc(today))}" alt="">`:''}
         <span class="t">${esc(today.title)}</span><span class="m">${esc(doorOf(today.door).title)} · ${esc(TYPE_LABEL[today.type])}${minsLabel(today)?' · '+esc(minsLabel(today)):''}</span></a>`:''}
     </header>
-    ${weeklyHtml()}${seasonHtml()}
+    ${coverFilterLine()}${weeklyHtml()}${seasonHtml()}
     <section class="sect" aria-labelledby="h-doors">
       <h2 id="h-doors">מה צריך עכשיו?</h2>
       <div>
