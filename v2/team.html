@@ -100,6 +100,10 @@
   .fl .fx{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
   .fl .s{font-size:13px;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .fl .acts{display:flex;gap:4px}
+  .fl .st{font-size:13px;font-weight:700}
+  .fl .st.up{color:var(--ink2)} .fl .st.done{color:var(--ok)} .fl .st.err{color:var(--bad)}
+  .fl.done .th{outline:2px solid var(--ok)}
+  .upsum{margin:0 0 4px;font-size:14px;font-weight:700;color:var(--ok)}
   .fl .acts button{min-width:44px;min-height:44px;border:0;border-radius:10px;background:#F1EDF6;color:var(--ink2);cursor:pointer;font-size:15px}
   /* רשימות */
   .item{display:flex;gap:12px;align-items:flex-start;border-top:1px solid #EEE8F4;padding:12px 0}
@@ -233,7 +237,9 @@ function newForm(){
        text:"", caution:"", hideName:false, consent:false, files:[], audio:null, group:{id:null, done:0}};
 }
 newForm();
-var MAX_FILES = 10, MAX_AUDIO_MB = 25;
+var MAX_FILES = 10, MAX_AUDIO_MB = 25, MAX_PPT_MB = 25;
+var PPT_MIMES = {pptx:"application/vnd.openxmlformats-officedocument.presentationml.presentation", ppt:"application/vnd.ms-powerpoint"};
+var PPT_ACCEPT = ".pptx,.ppt," + PPT_MIMES.pptx + "," + PPT_MIMES.ppt;
 
 function $(id){ return document.getElementById(id); }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(c){
@@ -590,10 +596,10 @@ function renderNew(){
         '<button type="button" class="btn2" onclick="$(&quot;audIn&quot;).click()">לבחור קובץ הקלטה</button><input type="file" id="audIn" accept="audio/*" capture hidden onchange="pickAudio(this)">' +
         '<p class="hint">רק הקול של איש הצוות. הקלטות של תלמידים לא עולות לאתר.</p></div>';
     } else if(needFile || t === "activity" || t === "write"){
-      h += '<div class="step"><h3>2. '+(needFile ? (t==="deck"?"קובץ המצגת (PDF)":"תמונות של הדף") : "קבצים, אם יש (לא חובה)")+'</h3>' +
-        '<button type="button" class="btn2" onclick="$(&quot;file&quot;).click()">בחירת קבצים</button><input type="file" id="file" multiple accept="'+(t==="deck"?"application/pdf":"image/*,application/pdf")+'" hidden onchange="addFiles(this)">' +
+      h += '<div class="step"><h3>2. '+(needFile ? (t==="deck"?"קובץ המצגת (PDF או PowerPoint)":"תמונות של הדף") : "קבצים, אם יש (לא חובה)")+'</h3>' +
+        '<button type="button" class="btn2" onclick="$(&quot;file&quot;).click()">בחירת קבצים</button><input type="file" id="file" multiple accept="'+(t==="deck"?"application/pdf,"+PPT_ACCEPT:"image/*,application/pdf,"+PPT_ACCEPT)+'" hidden onchange="addFiles(this)">' +
         '<div id="files"></div>' +
-        (needFile ? '<p class="hint">אפשר כמה קבצים יחד, והם ייכנסו כתרגול אחד.</p>' : '') + '</div>';
+        (needFile ? '<p class="hint">אפשר כמה קבצים יחד, והם ייכנסו כתרגול אחד.'+(t==="deck"?' קובץ PowerPoint הופך ל-PDF בזמן ההעלאה, וזה לוקח כחצי דקה.':'')+'</p>' : '') + '</div>';
     }
     if(t === "write" || t === "activity" || audio){
       h += '<div class="step"><h3>'+(t==="activity"?"איך עושים":(audio?"הטקסט המלא של ההקלטה (לא חובה)":"הטקסט המלא להקראה"))+'</h3>' +
@@ -653,6 +659,16 @@ function setTopic(id, title){ F.topicId = id; F.topicTitle = title; closeSheet()
 
 /* ── קבצים: כל תמונה מוקטנת ל-1600px בדפדפן, וכך גם יורד ממנה ה-EXIF ── */
 function readOne(f, cb){
+  /* PowerPoint עולה כמות שהוא, והשרת הופך אותו ל-PDF. בטלפון f.type לפעמים ריק, ולכן גם לפי הסיומת. */
+  var pext = (String(f.name).match(/\.(pptx?)$/i) || [])[1];
+  if(pext || f.type === PPT_MIMES.pptx || f.type === PPT_MIMES.ppt){
+    if(f.size > MAX_PPT_MB*1024*1024){ cb(null, 'המצגת "'+f.name+'" גדולה מדי (מעל '+MAX_PPT_MB+' מגה).'); return; }
+    var mime = f.type === PPT_MIMES.ppt || /^ppt$/i.test(pext||"") ? PPT_MIMES.ppt : PPT_MIMES.pptx;
+    var rp = new FileReader();
+    rp.onerror = function(){ cb(null, 'לא הצלחתי לקרוא את "'+f.name+'".'); };
+    rp.onload = function(){ cb({b64:rp.result.split(",")[1], mime:mime, name:"", file:f.name, prev:"", tag:"PPT"}); };
+    rp.readAsDataURL(f); return;
+  }
   if(f.type === "application/pdf"){
     if(f.size > 12*1024*1024){ cb(null, 'הקובץ "'+f.name+'" גדול מדי (מעל 12 מגה).'); return; }
     var r = new FileReader();
@@ -698,13 +714,23 @@ function addFiles(inp){
     else showOk(items.length === 1 ? "הקובץ נקלט." : items.length+" קבצים נקלטו.");
   });
 }
+/* מצב ההעלאה של כל קובץ (st): ריק = עוד לא נשלח · up = עולה עכשיו · done = עלה ונשמר · err = לא עלה */
+function fileState(f){
+  if(f.st === "up") return '<span class="st up">'+(f.tag==="PPT"?"הופך ל-PDF ועולה...":"עולה...")+'</span>';
+  if(f.st === "done") return '<span class="st done">✓ עלה ונשמר</span>';
+  if(f.st === "err") return '<span class="st err">לא עלה</span>';
+  return "";
+}
 function renderFiles(){
   var box = $("files"); if(!box) return;
-  box.innerHTML = F.files.map(function(f, i){
-    return '<div class="fl"><div class="th">'+(f.prev?'<img src="'+f.prev+'" alt="">':'PDF')+'</div>' +
-      '<div class="fx"><input type="text" class="dn" data-i="'+i+'" maxlength="80" aria-label="שם המסמך" placeholder="שם או דיוק, לא חובה" value="'+esc(f.name)+'">' +
-      '<span class="s">'+esc(f.file)+'</span></div>' +
-      '<div class="acts"><button type="button" aria-label="הסרת הקובץ" onclick="dropFile('+i+')">✕</button></div></div>';
+  var done = F.files.filter(function(f){ return f.st === "done"; }).length;
+  box.innerHTML = (F.files.length && done ? '<p class="upsum">'+done+' מתוך '+F.files.length+' קבצים עלו</p>' : '') +
+    F.files.map(function(f, i){
+    var locked = f.st === "done" || f.st === "up";
+    return '<div class="fl'+(f.st?' '+f.st:'')+'"><div class="th">'+(f.prev?'<img src="'+f.prev+'" alt="">':(f.tag||'PDF'))+'</div>' +
+      '<div class="fx"><input type="text" class="dn" data-i="'+i+'" maxlength="80" aria-label="שם המסמך" placeholder="שם או דיוק, לא חובה" value="'+esc(f.name)+'"'+(locked?' disabled':'')+'>' +
+      '<span class="s">'+esc(f.file)+'</span>'+fileState(f)+'</div>' +
+      '<div class="acts">'+(locked?'':'<button type="button" aria-label="הסרת הקובץ" onclick="dropFile('+i+')">✕</button>')+'</div></div>';
   }).join("");
 }
 function dropFile(i){ syncForm(); F.files.splice(i,1); renderFiles(); }
@@ -757,9 +783,10 @@ function formObj(){
           audience:F.audience, minutes:F.minutes, layer:F.layer, text:F.text, caution:F.caution, hideName:F.hideName, consent:F.consent,
           hasFiles: F.files.length > 0 || !!F.audio};
 }
+/* מה שעוד לא עלה. קובץ שעלה נשאר ברשימה עם סימון, כדי שרואים מה כבר נשמר. */
 function uploads(){
-  var list = F.files.slice();
-  if(F.audio) list.push({b64:F.audio.b64, mime:F.audio.mime, ext:F.audio.ext, name:"", file:F.audio.label});
+  var list = F.files.filter(function(f){ return f.st !== "done"; });
+  if(F.audio && F.audio.st !== "done") list.push(F.audio);
   return list;
 }
 function submitNew(){
@@ -780,18 +807,20 @@ function uploadNext(){
   if(!list.length) return finishNew();
   var f = list[0], n = F.group.done + 1, total = F.group.done + list.length;
   busy(true, "מעלה "+n+" מתוך "+total+"...");
-  showOk("מעלה "+n+" מתוך "+total+". לא לסגור את הדף.");
+  showOk("מעלה "+n+" מתוך "+total+(f.tag==="PPT"?" (מצגת PowerPoint הופכת ל-PDF, זה לוקח כחצי דקה)":"")+". לא לסגור את הדף.");
+  f.st = "up"; renderFiles();
   srv("apiAddDoc", function(){
-    if(F.files.length) F.files.shift(); else F.audio = null;
-    F.group.done++; renderFiles(); uploadNext();
-  }, [auth(), F.group.id, formObj(), {b64:f.b64, mime:f.mime, ext:f.ext||"", name:f.name, order:n}],
+    f.st = "done"; F.group.done++; renderFiles(); uploadNext();
+  }, [auth(), F.group.id, formObj(), {b64:f.b64, mime:f.mime, ext:f.ext||"", name:f.name||"", order:n}],
   function(e){
+    f.st = "err"; renderFiles();
     busy(false);
     var pre = F.group.done ? (F.group.done === 1 ? "קובץ אחד כבר עלה ונשמר. " : F.group.done+" קבצים כבר עלו ונשמרו. ") : "";
     showErr({message: pre + (e && e.message ? e.message : String(e)) + ' לחיצה על "המשך השליחה" תמשיך מהקובץ הבא.'});
   });
 }
 function finishNew(){
+  var n = F.group.done;
   srv("apiSubmitDone", function(){}, [auth(), F.group.id], function(){});
   newForm();
   renderNew();
