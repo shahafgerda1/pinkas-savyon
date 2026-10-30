@@ -104,6 +104,12 @@
   .fl .st.up{color:var(--ink2)} .fl .st.done{color:var(--ok)} .fl .st.err{color:var(--bad)}
   .fl.done .th{outline:2px solid var(--ok)}
   .upsum{margin:0 0 4px;font-size:14px;font-weight:700;color:var(--ok)}
+  .weeks{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+  .wk{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:56px;padding:10px 12px;border:1.5px solid var(--line);
+    border-radius:12px;background:var(--card);color:var(--ink);font:inherit;text-align:right;cursor:pointer}
+  .wk .wt{font-weight:700;font-size:15px;line-height:1.3} .wk .wd{font-size:13px;color:var(--ink2)}
+  .wk[aria-checked="true"]{border-color:var(--brand);background:var(--soft);box-shadow:inset 0 0 0 1px var(--brand)}
+  .wk.none{grid-column:1/-1;min-height:44px;justify-content:center} .wk.none .wt{font-weight:600}
   .fl .acts button{min-width:44px;min-height:44px;border:0;border-radius:10px;background:#F1EDF6;color:var(--ink2);cursor:pointer;font-size:15px}
   /* רשימות */
   .item{display:flex;gap:12px;align-items:flex-start;border-top:1px solid #EEE8F4;padding:12px 0}
@@ -233,7 +239,7 @@ var DOOR_FALLBACK = [
 /* הטופס כולו במקום אחד, כדי שבנייה מחדש של המסך לא תמחק מה שנכתב */
 var F = null;
 function newForm(){
-  F = {type:"", title:"", explanation:"", door:0, topicId:"", topicTitle:"", audience:[], minutes:"", layer:"",
+  F = {type:"", week:"", title:"", explanation:"", door:0, topicId:"", topicTitle:"", audience:[], minutes:"", layer:"",
        text:"", caution:"", hideName:false, consent:false, files:[], audio:null, group:{id:null, done:0}};
 }
 newForm();
@@ -580,6 +586,7 @@ function go(t){
 function doors(){ return (META && META.doors) || DOOR_FALLBACK; }
 function renderNew(){
   var t = F.type, needFile = (t === "page" || t === "deck"), audio = t === "audio";
+  var k = 1;  /* מספור השלבים: במצגת נוסף שלב השבוע, והשאר זזים */
   var h = '<div class="card"><h2>תרגול חדש לאתר</h2>' +
     '<p class="sub">שתי דקות, ואחרי אישור של צוות מוביל השפה הקשובה הוא אצל כולם.</p>' +
 
@@ -588,15 +595,16 @@ function renderNew(){
     '</div></div>';
 
   if(t){
+    if(t === "deck") h += weekStep(++k);
     if(audio){
-      h += '<div class="step"><h3>2. ההקלטה</h3>' +
+      h += '<div class="step"><h3>'+(++k)+'. ההקלטה</h3>' +
         '<div class="rec"><button type="button" class="big'+(REC.on?' on':'')+'" id="recBtn" onclick="toggleRec()">'+(REC.on?'עצירה':'להקליט עכשיו')+'</button>' +
         '<span id="recTime">'+(REC.on?'מקליט...':'')+'</span>' +
         (F.audio ? '<audio controls src="'+F.audio.url+'"></audio><span>'+esc(F.audio.label)+'</span>' : '') + '</div>' +
         '<button type="button" class="btn2" onclick="$(&quot;audIn&quot;).click()">לבחור קובץ הקלטה</button><input type="file" id="audIn" accept="audio/*" capture hidden onchange="pickAudio(this)">' +
         '<p class="hint">רק הקול של איש הצוות. הקלטות של תלמידים לא עולות לאתר.</p></div>';
     } else if(needFile || t === "activity" || t === "write"){
-      h += '<div class="step"><h3>2. '+(needFile ? (t==="deck"?"קובץ המצגת (PDF או PowerPoint)":"תמונות של הדף") : "קבצים, אם יש (לא חובה)")+'</h3>' +
+      h += '<div class="step"><h3>'+(++k)+'. '+(needFile ? (t==="deck"?"קובץ המצגת (PDF או PowerPoint)":"תמונות של הדף") : "קבצים, אם יש (לא חובה)")+'</h3>' +
         '<button type="button" class="btn2" onclick="$(&quot;file&quot;).click()">בחירת קבצים</button><input type="file" id="file" multiple accept="'+(t==="deck"?"application/pdf,"+PPT_ACCEPT:"image/*,application/pdf,"+PPT_ACCEPT)+'" hidden onchange="addFiles(this)">' +
         '<div id="files"></div>' +
         (needFile ? '<p class="hint">אפשר כמה קבצים יחד, והם ייכנסו כתרגול אחד.'+(t==="deck"?' קובץ PowerPoint הופך ל-PDF בזמן ההעלאה, וזה לוקח כחצי דקה.':'')+'</p>' : '') + '</div>';
@@ -605,11 +613,11 @@ function renderNew(){
       h += '<div class="step"><h3>'+(t==="activity"?"איך עושים":(audio?"הטקסט המלא של ההקלטה (לא חובה)":"הטקסט המלא להקראה"))+'</h3>' +
         '<textarea id="ftext" maxlength="8000" placeholder="'+(t==="activity"?"כל שלב בשורה משלו":"מילה במילה, כדי שאפשר יהיה לקרוא אותו לכיתה")+'">'+esc(F.text)+'</textarea></div>';
     }
-    h += '<div class="step"><h3>3. כמה מילים</h3>' +
+    h += '<div class="step"><h3>'+(++k)+'. כמה מילים</h3>' +
       '<label class="f">שם התרגול<input type="text" id="ftitle" maxlength="80" value="'+esc(F.title)+'"></label>' +
       '<label class="f">מה עושים בו, במשפט אחד<input type="text" id="fexpl" maxlength="300" value="'+esc(F.explanation)+'"></label></div>' +
 
-      '<div class="step"><h3>4. לאן זה שייך?</h3><p class="hint">מה התרגול עוזר לעשות</p>' +
+      '<div class="step"><h3>'+(++k)+'. לאן זה שייך?</h3><p class="hint">'+(F.week && F.door && weekById(F.week) && weekById(F.week).door === F.door ? 'מולא לפי התרגול השבועי שבחרת. אפשר לשנות.' : 'מה התרגול עוזר לעשות')+'</p>' +
       '<div class="doors" role="group" aria-label="דלת">' + doors().map(function(d){
         return '<button type="button" class="chip" aria-pressed="'+(F.door===d.n)+'" onclick="setDoor('+d.n+')"><span class="dot" style="background:'+d.color+'"></span>'+esc(d.title)+'</button>';
       }).join("") + '</div>' +
@@ -640,6 +648,29 @@ function syncForm(){
   Array.prototype.forEach.call(document.querySelectorAll("#files .dn"), function(inp){
     var i = Number(inp.dataset.i); if(F.files[i]) F.files[i].name = inp.value;
   });
+}
+/* לאיזה תרגול שבועי (30.10.2026, בקשת שחף): במצגת זו שאלת חובה, עם ארבעת השבועות הקרובים */
+function weeks(){ return (META && META.weeks) || []; }
+function weekById(v){ return weeks().filter(function(w){ return w.from === v; })[0]; }
+function weekStep(n){
+  var list = weeks();
+  var h = '<div class="step" id="weekStep"><h3>'+n+'. לאיזה תרגול שבועי המצגת?</h3>' +
+    '<p class="hint">כך המצגת תגיע לשבוע הנכון באתר. אלה ארבעת השבועות הקרובים.</p>';
+  if(!META) return h + '<p class="hint">טוען את השבועות...</p></div>';
+  h += '<div class="weeks" role="radiogroup" aria-label="התרגול השבועי">' + list.map(function(w){
+    return '<button type="button" class="wk" role="radio" aria-checked="'+(F.week===w.from)+'" onclick="setWeek(\''+w.from+'\')">' +
+      '<span class="wt">'+esc(w.title)+'</span><span class="wd">'+(w.now?'השבוע · ':'')+esc(w.when)+'</span></button>';
+  }).join("") +
+    '<button type="button" class="wk none" role="radio" aria-checked="'+(F.week==="none")+'" onclick="setWeek(\'none\')"><span class="wt">לא לתרגול שבועי מסוים</span></button></div>';
+  if(!list.length) h += '<p class="hint">לא הצלחתי לקרוא כרגע את רשימת השבועות מהאתר.</p>';
+  return h + '</div>';
+}
+function setWeek(v){
+  syncForm(); F.week = v;
+  /* הדלת והנושא של השבוע מוצעים רק כשעוד לא נבחרו, ואפשר לשנות */
+  var w = weekById(v);
+  if(w && w.door && !F.door){ F.door = w.door; F.topicId = w.topicId; F.topicTitle = w.topicTitle; }
+  renderNew();
 }
 function setType(t){ syncForm(); if(F.type !== t){ F.files = []; } F.type = t; renderNew(); }
 function setDoor(n){ syncForm(); if(F.door !== n){ F.topicId = ""; F.topicTitle = ""; } F.door = n; renderNew(); }
@@ -779,7 +810,7 @@ function setAudio(blob, label, ext){
 
 /* ── שליחה ── מסמך אחרי מסמך. כשלון באמצע משאיר את מה שעלה וממשיך משם. */
 function formObj(){
-  return {type:F.type, title:F.title, explanation:F.explanation, door:F.door, topicId:F.topicId,
+  return {type:F.type, week:F.type==="deck"?F.week:"", title:F.title, explanation:F.explanation, door:F.door, topicId:F.topicId,
           audience:F.audience, minutes:F.minutes, layer:F.layer, text:F.text, caution:F.caution, hideName:F.hideName, consent:F.consent,
           hasFiles: F.files.length > 0 || !!F.audio};
 }
@@ -792,6 +823,11 @@ function uploads(){
 function submitNew(){
   syncForm();
   var t = F.type;
+  if(t === "deck" && !F.week && !F.group.id){
+    showErr({message:"צריך לבחור לאיזה תרגול שבועי המצגת."});
+    if($("weekStep")) $("weekStep").scrollIntoView({behavior:"smooth", block:"center"});
+    return;
+  }
   if((t === "page" || t === "deck") && !F.files.length && !F.group.done){ showErr({message:"עוד לא נבחרו קבצים."}); return; }
   if(t === "audio" && !F.audio && !F.group.done){ showErr({message:"עוד אין הקלטה."}); return; }
   if(F.group.id) return uploadNext();
@@ -847,6 +883,7 @@ function renderMine(){
       return '<div class="item">'+thumb(r)+'<div class="bd">' +
         '<span class="t">'+esc(r.title)+'</span>' +
         '<span class="s">'+esc(r.typeLabel)+' · '+esc(r.ts)+(r.mine?'':' · '+esc(r.by))+'</span>' +
+        (r.week ? '<span class="s">לתרגול השבועי: '+esc(r.week)+'</span>' : '') +
         '<span>'+statusPill(r.status)+(r.status==="פורסם"&&r.approvedBy?' <span class="s">אושר על ידי '+esc(r.approvedBy)+'</span>':'')+'</span>' +
         (r.status==="הוחזר"&&r.note ? '<div class="note"><b>'+esc(r.approvedBy)+':</b> '+esc(r.note)+'</div>' : '') +
         '<div class="acts"><button class="btn3" onclick="editOne(\''+r.id+'\')">'+(r.status==="הוחזר"?"תיקון ושליחה מחדש":"עריכה")+'</button>' +
@@ -914,6 +951,7 @@ function rvCard(r){
     '<span class="hint">'+esc(r.typeLabel)+(r.minutes?' · '+esc(r.minutes)+' דק׳':'')+'</span>' +
     '<span class="t" style="font-family:Rubik,sans-serif;font-weight:700;font-size:18px">'+esc(r.title)+'</span>' +
     '<span class="s">מאת '+esc(r.by)+' · '+esc(r.ts)+'</span>' +
+    (r.week ? '<span class="s"><b>לתרגול השבועי:</b> '+esc(r.week)+'</span>' : '') +
     '<p style="margin:0">'+esc(r.explanation)+'</p>' +
     '<div class="tags">'+(door?'<span class="tag">'+esc(door.title)+'</span>':'')+(r.topicTitle?'<span class="tag">'+esc(r.topicTitle)+'</span>':'') +
       aud.map(function(a){ return '<span class="tag">'+a+'</span>'; }).join("")+(r.layer?'<span class="tag">'+esc(r.layer)+'</span>':'')+'</div>' +
