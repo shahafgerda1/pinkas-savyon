@@ -451,7 +451,7 @@ function render(){
   else if(parts[0]==='p' && byId(parts[1])) renderPractice(byId(parts[1]), +(q.get('d')||0));
   else if(parts[0]==='search') renderSearch(q.get('q')||'');
   else if(parts[0]==='topic' && topicOf(parts[1])) renderTopic(parts[1]);
-  else if(parts[0]==='step' && STEPS[(+parts[1]||0)-1]) renderStep(+parts[1]);
+  else if(parts[0]==='step' && stepOf(+parts[1])) renderStep(+parts[1]);
   else if(parts[0]==='boger' && /^[1-6]$/.test(parts[1]||'')) renderBoger(+parts[1], q.get('i')||'');
   else if(parts[0]==='negishut') renderA11y();
   else if(parts[0]==='mine') renderMine();
@@ -759,8 +759,22 @@ function stepPractices(st){
 }
 const MONTH_NAME = {9:'ספטמבר',10:'אוקטובר',11:'נובמבר',12:'דצמבר',1:'ינואר',2:'פברואר',3:'מרץ',4:'אפריל',5:'מאי',6:'יוני',7:'יולי',8:'אוגוסט'};
 function stepMonths(st){ const l = stepLive(st); return (l && l.months) || []; }
+/* שלבים שהצוות המוביל הוסיף מהמרחב (d.added, 3.11.2026): מספר מ-35 והלאה, בסוף התחום שלהם.
+   המספר הוא הכתובת, ולכן הסדר באתר נלקח מ-MAHALACH ולא מהמספר. */
+function stepOf(i){ return STEPS.find(x=>x.i===i) || null; }
+function stepOrder(){ return MAHALACH.reduce((a,d)=>a.concat(d.steps), []); }
+function addSteps(list){
+  [].concat(list || []).forEach(a=>{
+    const d = MAHALACH.find(x=>x.domain===a.domain), i = Number(a.i);
+    if(!d || !i || !a.title) return;
+    const had = stepOf(i);
+    if(had){ had.t = a.title; return; }
+    const st = {t:a.title, topics:[], i, part:d.part, domain:d.domain, added:true};
+    d.steps.push(st); STEPS.push(st);
+  });
+}
 function fetchMahalach(){
-  window.__pinkasMahalach = function(d){ MH_LIVE = (d && d.steps) || {}; render(); };
+  window.__pinkasMahalach = function(d){ MH_LIVE = (d && d.steps) || {}; addSteps(d && d.added); render(); };
   const s = document.createElement('script');
   s.src = ADD_URL + '?api=mahalach&callback=__pinkasMahalach';
   s.onerror = function(){};  /* בלי רשת: השלבים נשארים עם ההצעה לפי נושא */
@@ -772,14 +786,15 @@ function mahalachHtml(n){
   const d = MAHALACH.find(x=>x.part===n); if(!d) return '';
   return `<section class="sect mahalach" aria-labelledby="h-mh"><h2 id="h-mh">${(()=>{ const bt=(bogerCat(n)||{}).title||d.domain; return `המהלך השנתי: ${esc(bt)}${bt!==d.domain?` <span class="sel">(${esc(d.domain)})</span>`:''}`; })()}</h2>
     <p class="hint"><b>${esc(d.goal)}.</b> ${esc(d.skills)}</p>
-    <ol class="mh">${d.steps.map(st=>{ const k=stepPractices(st).filter(p=>visible(p)).length;
+    <ol class="mh">${d.steps.map(st=>{ const k=stepPractices(st).filter(p=>visible(p)).length, num=stepOrder().indexOf(st)+1;
       const mo = stepMonths(st).map(m=>MONTH_NAME[m]).join(', ');
-      return k ? `<li><a href="#/step/${st.i}"><span class="num">${st.i}</span><span class="tt">${esc(st.t)}${mo?`<br><span class="mo">${esc(mo)}</span>`:''}</span><span class="c">${k}</span></a></li>`
-               : `<li class="none"><span class="num">${st.i}</span><span class="tt">${esc(st.t)}</span><span class="c">עוד אין תרגולים</span></li>`; }).join('')}</ol>
+      return k ? `<li><a href="#/step/${st.i}"><span class="num">${num}</span><span class="tt">${esc(st.t)}${mo?`<br><span class="mo">${esc(mo)}</span>`:''}</span><span class="c">${k}</span></a></li>`
+               : `<li class="none"><span class="num">${num}</span><span class="tt">${esc(st.t)}</span><span class="c">עוד אין תרגולים</span></li>`; }).join('')}</ol>
   </section>`;
 }
 function renderStep(i){
-  const st = STEPS[i-1]; const c = bogerCat(st.part);
+  const st = stepOf(i); const c = bogerCat(st.part);
+  const order = stepOrder(), pos = order.indexOf(st);
   const live = stepLive(st), chosen = stepChosen(st);
   /* בחירה של חן נשארת בסדר שלה; ההצעה לפי נושא ממוינת כמו בכל מקום */
   let list = stepPractices(st).filter(p=>visible(p));
@@ -787,11 +802,11 @@ function renderStep(i){
   const starter = chosen && live.starter ? list.find(p=>p.id===live.starter) : null;
   const rest = starter ? list.filter(p=>p!==starter) : list;
   const mo = stepMonths(st).map(m=>MONTH_NAME[m]).join(', ');
-  const prev = STEPS[i-2], next = STEPS[i];
+  const prev = order[pos-1], next = order[pos+1];
   app.innerHTML = `<main class="wrap" id="main">
     ${homeWing()}${backLink('#/boger/'+st.part, c ? c.title : 'בוגר סביון')}
     <div class="dhead"><span class="bar" style="background:${c?c.color:'var(--brand)'}"></span><h1>${esc(st.t)}</h1>
-      <div class="m">המהלך השנתי · ${esc(st.domain)} · שלב ${i} מתוך ${STEPS.length}${mo?` · ${esc(mo)}`:''} · ${(k=>k>list.length?`${k} פריטים (${list.length} תרגולים, חלקם עם מצגת ומדריך לכל בית)`:`${list.length} תרגולים`)(docCards(list).length)}</div></div>
+      <div class="m">המהלך השנתי · ${esc(st.domain)} · שלב ${pos+1} מתוך ${order.length}${mo?` · ${esc(mo)}`:''} · ${(k=>k>list.length?`${k} פריטים (${list.length} תרגולים, חלקם עם מצגת ומדריך לכל בית)`:`${list.length} תרגולים`)(docCards(list).length)}</div></div>
     ${live && live.note ? `<div class="stepnote">${esc(live.note)}</div>` : ''}
     ${filterLine()}
     ${starter ? `<section class="starthere" aria-label="מתחילים כאן"><span class="k">מתחילים כאן</span><div class="grid">${cardsHtml([starter])}</div></section>` : ''}
@@ -1424,6 +1439,15 @@ function applySivug(items){
   });
   return any;
 }
+/* תרגול השבוע החי (?api=weeks, 3.11.2026): הצוות המוביל קובע מהמרחב מה מתרגלים בכל שבוע.
+   הרשימה מהשרת גוברת על weekly שבקובץ; בלי רשת, או כשהשרת מחזיר null, נשארים עם הקובץ. */
+function fetchWeeks(){
+  window.__pinkasWeeks = function(d){ if(d && Array.isArray(d.weeks)){ D.weekly = d.weeks; render(); } };
+  const s = document.createElement('script');
+  s.src = ADD_URL + '?api=weeks&callback=__pinkasWeeks';
+  s.onerror = function(){};
+  document.body.appendChild(s);
+}
 /* הסיווג והתוספות מגיעים בבקשות נפרדות. סיווג של תוספת שעוד לא נטענה נשמר כאן ומוחל שוב ב-applyAdds */
 let SIVUG = null;
 function fetchSivug(){
@@ -1516,6 +1540,7 @@ render();
 fetchAdds();
 fetchBoger();
 fetchMahalach();
+fetchWeeks();
 fetchSivug();
 fetchMinutes();
 track('visit', null);
