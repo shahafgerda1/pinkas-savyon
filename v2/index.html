@@ -763,6 +763,7 @@ function stepMonths(st){ const l = stepLive(st); return (l && l.months) || []; }
    המספר הוא הכתובת, ולכן הסדר באתר נלקח מ-MAHALACH ולא מהמספר. */
 function stepOf(i){ return STEPS.find(x=>x.i===i) || null; }
 function stepOrder(){ return MAHALACH.reduce((a,d)=>a.concat(d.steps), []); }
+/* שם מעודכן לשלב קבוע (d.renamed, 3.11.2026) עובר באותה פונקציה: השלב כבר קיים, ורק השם מתחלף */
 function addSteps(list){
   [].concat(list || []).forEach(a=>{
     const d = MAHALACH.find(x=>x.domain===a.domain), i = Number(a.i);
@@ -774,7 +775,7 @@ function addSteps(list){
   });
 }
 function fetchMahalach(){
-  window.__pinkasMahalach = function(d){ MH_LIVE = (d && d.steps) || {}; addSteps(d && d.added); render(); };
+  window.__pinkasMahalach = function(d){ MH_LIVE = (d && d.steps) || {}; addSteps(d && d.added); addSteps(d && d.renamed); render(); };
   const s = document.createElement('script');
   s.src = ADD_URL + '?api=mahalach&callback=__pinkasMahalach';
   s.onerror = function(){};  /* בלי רשת: השלבים נשארים עם ההצעה לפי נושא */

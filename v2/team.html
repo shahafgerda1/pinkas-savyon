@@ -1229,11 +1229,18 @@ function mhAddStep(k){
   }, {title:"שלב חדש", placeholder:"למשל: סקרנות ונכונות להתנסות", yes:"להוסיף"});
 }
 function mhRenameStep(){
-  var s = mhStep(MH_STEP); if(!s || !s.added) return;
-  askText("השם החדש של השלב:", s.title, function(v){
-    v = String(v || "").trim(); if(v.length < 2){ notify("צריך שם לשלב. כדי להוריד את השלב יש כפתור נפרד."); return; }
-    srv("apiMahalachRenameStep", function(r){ s.title = r.title; WK = null; mhDrawStep(); mhStatus("השם עודכן ועלה לאתר."); }, [auth(), s.i, v]);
+  var s = mhStep(MH_STEP); if(!s) return;
+  askText("השם החדש של השלב:" + (s.orig ? " (השם המקורי: " + s.orig + ")" : ""), s.title, function(v){
+    v = String(v || "").trim(); if(v.length < 2){ notify(s.added ? "צריך שם לשלב. כדי להוריד את השלב יש כפתור נפרד." : "צריך שם לשלב. כדי לחזור לשם המקורי יש כפתור נפרד."); return; }
+    srv("apiMahalachRenameStep", function(r){ s.title = r.title; if(!s.added) s.orig = r.orig || ""; WK = null; mhDrawStep(); mhStatus("השם עודכן ועלה לאתר."); }, [auth(), s.i, v]);
   }, {title:"שינוי שם", yes:"לשמור"});
+}
+/* שלב קבוע: חזרה לשם שבמהלך המקורי */
+function mhResetName(){
+  var s = mhStep(MH_STEP); if(!s || s.added || !s.orig) return;
+  askConfirm('השלב יחזור לשם המקורי, "' + s.orig + '".', function(){
+    srv("apiMahalachRenameStep", function(r){ s.title = r.title; s.orig = ""; WK = null; mhDrawStep(); mhStatus("חזר לשם המקורי."); }, [auth(), s.i, ""]);
+  }, {title:"לחזור לשם המקורי?", yes:"לחזור"});
 }
 function mhRemoveStep(){
   var s = mhStep(MH_STEP); if(!s || !s.added) return;
@@ -1282,7 +1289,9 @@ function mhDrawStep(){
     '<div class="row"><button class="btn3" onclick="mhBack()">→ כל השלבים</button></div>' +
     '<span class="sub" style="color:' + mhColor(s.part) + ';font-weight:700">שלב ' + (pos + 1) + ' מתוך ' + all.length + ' · ' + esc(s.domain) + '</span>' +
     '<h2>' + esc(s.title) + '</h2>' +
-    (s.added ? '<div class="row"><button class="btn3" onclick="mhRenameStep()">שינוי שם השלב</button><button class="btn3" onclick="mhRemoveStep()">הורדת השלב</button></div>' : '') +
+    (s.orig ? '<p class="hint">השם המקורי במהלך: ' + esc(s.orig) + '</p>' : '') +
+    '<div class="row"><button class="btn3" onclick="mhRenameStep()">שינוי שם השלב</button>' +
+      (s.added ? '<button class="btn3" onclick="mhRemoveStep()">הורדת השלב</button>' : (s.orig ? '<button class="btn3" onclick="mhResetName()">חזרה לשם המקורי</button>' : '')) + '</div>' +
     '<div class="mh-status" id="mhStatus" role="status">' + (s.updated ? 'נשמר לאחרונה ' + esc(s.updated) + (s.by ? ' (' + esc(s.by) + ')' : '') : 'כל סימון כאן נשמר ועולה לאתר מיד.') + '</div>' +
     '<div class="msg" id="msg" hidden></div>' +
     '<div class="step"><h3>באילו חודשים מתרגלים את השלב</h3><div class="mon" id="mhMon"></div>' +
