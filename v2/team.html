@@ -683,6 +683,8 @@ function weekStep(n){
   }).join("") +
     '<button type="button" class="wk none" role="radio" aria-checked="'+(F.week==="none")+'" onclick="setWeek(\'none\')"><span class="wt">לא לתרגול שבועי מסוים</span></button></div>';
   if(!list.length) h += '<p class="hint">לא הצלחתי לקרוא כרגע את רשימת השבועות מהאתר.</p>';
+  var sw = weekById(F.week);
+  if(sw && sw.leadNote) h += '<div class="note"><b>מהצוות המוביל, למי שבונה את המצגת:</b> ' + esc(sw.leadNote) + '</div>';
   return h + '</div>';
 }
 function setWeek(v){
@@ -1101,7 +1103,7 @@ var MH_ADDS = "https://script.google.com/macros/s/AKfycbwwr4eOX9jFACxB_nyTfk0k-w
 var MONTH_LABEL = {9:"ספט׳",10:"אוק׳",11:"נוב׳",12:"דצמ׳",1:"ינו׳",2:"פבר׳",3:"מרץ",4:"אפר׳",5:"מאי",6:"יוני"};
 var PTYPE = {page:"דף להקרנה", activity:"פעילות", write:"תרגול כתוב", deck:"מצגת", audio:"הקלטה"};
 
-function mhCopy(st){ return {practices:st.practices.slice(), starter:st.starter, months:st.months.slice(), missing:!!st.missing, note:st.note||""}; }
+function mhCopy(st){ return {practices:st.practices.slice(), starter:st.starter, months:st.months.slice(), missing:!!st.missing, note:st.note||"", leadNote:st.leadNote||""}; }
 function mhColor(part){ var c = (MH.cats||[]).filter(function(x){ return x.n === part; })[0]; return c ? c.color : "#54078F"; }
 function mhStep(i){ return MH.steps.filter(function(s){ return s.i === i; })[0]; }
 
@@ -1174,6 +1176,7 @@ function mhStepLine(s){
   if(s.months.length) bits.push(s.months.map(function(m){ return MONTH_LABEL[m]; }).join(", "));
   if(s.missing) bits.push('<span class="tagW" style="margin:0">חסר תרגול</span>');
   if(s.note) bits.push('יש הערה לצוות');
+  if(s.leadNote) bits.push('יש הערה לצוות המוביל');
   return bits.join(" · ");
 }
 function mhDrawList(){
@@ -1293,7 +1296,10 @@ function mhDrawStep(){
     '<div class="step"><h3>מה עוד</h3>' +
       '<label class="check"><input type="checkbox" id="mhMiss"' + (s.missing ? ' checked' : '') + ' onchange="mhMissing(this.checked)"> חסר תרגול טוב לשלב הזה, צריך לכתוב אחד</label>' +
       '<label class="f">הערה לצוות. תופיע באתר מעל התרגולים של השלב (לא חובה)<textarea id="mhNote" maxlength="600" onchange="mhNote()">' + esc(s.note) + '</textarea></label>' +
-      '<div class="row"><button class="btn2" onclick="mhNote()">שמירת ההערה</button></div></div>' +
+      '<div class="row"><button class="btn2" onclick="mhNote()">שמירת ההערה</button></div>' +
+      '<label class="f">הערה לצוות המוביל: דיוק לשם השלב למי שבונה את המצגת, למשל היבט שצריך להתייחס אליו או חיבור לחג. לא עולה לאתר, ומופיעה רק כאן ולמי שמעלה מצגת לשבוע של השלב (לא חובה)' +
+        '<textarea id="mhLead" maxlength="1000" onchange="mhLead()">' + esc(s.leadNote || "") + '</textarea></label>' +
+      '<div class="row"><button class="btn2" onclick="mhLead()">שמירת ההערה לצוות המוביל</button></div></div>' +
     '<nav class="mhnav" aria-label="שלבים">' +
       (prev ? '<button class="btn3" onclick="mhOpen(' + prev.i + ')">→ ' + esc(prev.title) + '</button>' : '') +
       (next ? '<button class="btn3" onclick="mhOpen(' + next.i + ')">' + esc(next.title) + ' ←</button>' : '') +
@@ -1368,6 +1374,8 @@ function mhMonth(m){ mhAct(function(s){ var k = s.months.indexOf(m);
 function mhMissing(v){ mhAct(function(s){ s.missing = !!v; }); }
 function mhNote(){ var el = $("mhNote"); if(!el) return; var s = mhStep(MH_STEP), v = el.value.trim();
   if(v === (s.note || "")) return; s.note = v; mhSave(s); }
+function mhLead(){ var el = $("mhLead"); if(!el) return; var s = mhStep(MH_STEP), v = el.value.trim();
+  if(v === (s.leadNote || "")) return; s.leadNote = v; mhSave(s); }
 function mhStatus(t, bad){ var el = $("mhStatus"); if(!el) return; el.textContent = t; el.className = "mh-status" + (bad ? " err" : ""); }
 function mhSave(s){
   if(MH_SAVE.busy){ MH_SAVE.again = s; mhStatus("שומר..."); return; }
@@ -1379,8 +1387,8 @@ function mhSave(s){
     if(MH_STEP === s.i) mhStatus("נשמר ועלה לאתר · " + r.updated);
   }, [auth(), s.i, data], function(e){
     MH_SAVE.busy = false; MH_SAVE.again = null;
-    var b = s._saved || {practices:[], starter:"", months:[], missing:false, note:""};
-    s.practices = b.practices.slice(); s.starter = b.starter; s.months = b.months.slice(); s.missing = b.missing; s.note = b.note;
+    var b = s._saved || {practices:[], starter:"", months:[], missing:false, note:"", leadNote:""};
+    s.practices = b.practices.slice(); s.starter = b.starter; s.months = b.months.slice(); s.missing = b.missing; s.note = b.note; s.leadNote = b.leadNote;
     /* מה שנכתב בתיבת ההערה נשאר בה, כדי שאפשר יהיה לשמור שוב ולא לכתוב מחדש */
     if(MH_STEP === s.i){ mhRefresh(); if($("mhMiss")) $("mhMiss").checked = s.missing; }
     mhStatus("לא נשמר: " + (e && e.message ? e.message : e) + " השלב חזר למצב האחרון שנשמר, אפשר לנסות שוב.", true);
