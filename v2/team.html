@@ -1114,14 +1114,27 @@ var PTYPE = {page:"דף להקרנה", activity:"פעילות", write:"תרגו�
 function mhCopy(st){ return {practices:st.practices.slice(), starter:st.starter, months:st.months.slice(), missing:!!st.missing, note:st.note||"", leadNote:st.leadNote||""}; }
 function mhColor(part){ var c = (MH.cats||[]).filter(function(x){ return x.n === part; })[0]; return c ? c.color : "#54078F"; }
 function mhStep(i){ return MH.steps.filter(function(s){ return s.i === i; })[0]; }
+/* החודש נגזר מהשיבוץ לשבוע (4.11.2026, בקשת חן), כמו stepMonths באתר. הסימון הידני נשאר לשלב שלא שובץ.
+   MH_WEEKS שומר את הרשימה גם אחרי ש-WK מתאפס בשינוי שם של שלב. */
+var MH_WEEKS = null;
+function mhWeeksOf(i){
+  return (WK ? WK.weeks : MH_WEEKS || []).filter(function(w){ return w.step === i || WK_TOPIC_STEP[w.topic] === i || (w.more || []).indexOf(i) >= 0; });
+}
+function mhMonths(s){
+  var ws = mhWeeksOf(s.i); if(!ws.length) return s.months;
+  var on = {}; ws.forEach(function(w){ on[Number(w.from.slice(5, 7))] = 1; on[Number(w.to.slice(5, 7))] = 1; });
+  return MH.months.filter(function(m){ return on[m]; });
+}
 
 function renderMahalach(){
-  if(MH && MH_P) return mhDraw();
+  if(MH && MH_P && WK) return mhDraw();
   $("pane").innerHTML = '<div class="card"><p class="sub">רגע, טוען את השלבים ואת כל התרגולים שבאתר...</p><div class="msg" id="msg" hidden></div></div>';
-  var need = (MH ? 0 : 1) + (MH_P ? 0 : 1), got = 0;
+  var need = (MH ? 0 : 1) + (MH_P ? 0 : 1) + (WK ? 0 : 1), got = 0;
   function one(){ if(++got === need) mhDraw(); }
   if(!MH) srv("apiMahalach", function(d){ MH = d; MH.steps.forEach(function(s){ s._saved = mhCopy(s); }); one(); }, [auth()]);
   if(!MH_P) mhLoadPinkas(one);
+  /* בלי השבועות הלשונית נשארת שמישה, עם הסימון הידני בלבד */
+  if(!WK) srv("apiWeeks", function(d){ WK = d; MH_WEEKS = d.weeks; one(); }, [auth()], function(){ one(); });
 }
 /* קובץ הנתונים של האתר בתג script, ואחריו התוספות שפורסמו (אותו JSONP שהאתר משתמש בו) */
 function mhLoadPinkas(cb){
@@ -1181,7 +1194,8 @@ function mhStepLine(s){
     var k = mhSuggest(s).length;
     bits.push('עוד לא בחרת' + (k ? ' · ' + k + ' הצעות מחכות' : ''));
   }
-  if(s.months.length) bits.push(s.months.map(function(m){ return MONTH_LABEL[m]; }).join(", "));
+  var mo = mhMonths(s);
+  if(mo.length) bits.push(mo.map(function(m){ return MONTH_LABEL[m]; }).join(", "));
   if(s.missing) bits.push('<span class="tagW" style="margin:0">חסר תרגול</span>');
   if(s.note) bits.push('יש הערה לצוות');
   if(s.leadNote) bits.push('יש הערה לצוות המוביל');
@@ -1309,7 +1323,7 @@ function mhDrawStep(){
     '<div class="mh-status" id="mhStatus" role="status">' + (s.updated ? 'נשמר לאחרונה ' + esc(s.updated) + (s.by ? ' (' + esc(s.by) + ')' : '') : 'כל סימון כאן נשמר ועולה לאתר מיד.') + '</div>' +
     '<div class="msg" id="msg" hidden></div>' +
     '<div class="step"><h3>באילו חודשים מתרגלים את השלב</h3><div class="mon" id="mhMon"></div>' +
-      '<p class="hint">אפשר כמה חודשים. באתר, השלבים של החודש הנוכחי מופיעים בכריכה תחת "עכשיו במהלך השנתי".</p></div>' +
+      '<p class="hint" id="mhMonHint"></p></div>' +
     '<div class="step"><h3 id="mhChH"></h3><div id="mhCh"></div></div>' +
     '<div class="step"><h3 id="mhSgH"></h3><div id="mhSg"></div></div>' +
     '<div class="step"><h3>חיפוש בכל האתר</h3>' +
@@ -1331,8 +1345,15 @@ function mhDrawStep(){
 }
 function mhRefresh(){
   var s = mhStep(MH_STEP); if(!s || !$("mhCh")) return;
-  $("mhMon").innerHTML = MH.months.map(function(m){
-    return '<button type="button" class="chip" aria-pressed="' + (s.months.indexOf(m) >= 0) + '" onclick="mhMonth(' + m + ')">' + MONTH_LABEL[m] + '</button>'; }).join("");
+  var ws = mhWeeksOf(s.i);
+  if(ws.length){
+    $("mhMon").innerHTML = mhMonths(s).map(function(m){ return '<button type="button" class="chip" aria-pressed="true" disabled style="cursor:default">' + MONTH_LABEL[m] + '</button>'; }).join("");
+    $("mhMonHint").textContent = "נקבע לבד מהשיבוץ בלשונית \"תרגול השבוע\" (" + ws.map(function(w){ return wkDm(w.from) + "-" + wkDm(w.to); }).join(", ") + "). כדי לשנות, מזיזים שם את השבוע.";
+  } else {
+    $("mhMon").innerHTML = MH.months.map(function(m){
+      return '<button type="button" class="chip" aria-pressed="' + (s.months.indexOf(m) >= 0) + '" onclick="mhMonth(' + m + ')">' + MONTH_LABEL[m] + '</button>'; }).join("");
+    $("mhMonHint").textContent = "השלב עוד לא שובץ לשבוע, ולכן מסמנים כאן ידנית. אפשר כמה חודשים. באתר, השלבים של החודש הנוכחי מופיעים בכריכה תחת \"עכשיו במהלך השנתי\".";
+  }
   var n = s.practices.length;
   $("mhChH").textContent = "התרגולים שבחרת לשלב (" + n + ")";
   $("mhCh").innerHTML = n

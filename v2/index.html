@@ -760,7 +760,17 @@ function stepPractices(st){
   return D.practices.filter(p=>st.topics.some(id=>inTopic(p,id)) || st.topics.includes(topicAlias(p.topic)));
 }
 const MONTH_NAME = {9:'ספטמבר',10:'אוקטובר',11:'נובמבר',12:'דצמבר',1:'ינואר',2:'פברואר',3:'מרץ',4:'אפריל',5:'מאי',6:'יוני',7:'יולי',8:'אוגוסט'};
-function stepMonths(st){ const l = stepLive(st); return (l && l.months) || []; }
+/* החודש נגזר מהשיבוץ לשבוע (4.11.2026, בקשת חן): שלב ששובץ מקבל כל חודש ששבוע שלו נוגע בו, גם כשלב נוסף.
+   הסימון הידני מהמרחב נשאר רק לשלב שלא שובץ לאף שבוע. שבוע הצ'ק אין של אוקטובר נשמר כנושא ולא כשלב. */
+const MONTH_ORDER = [9,10,11,12,1,2,3,4,5,6,7,8];
+const WEEK_TOPIC_STEP = {cchekin:3};
+function stepWeeks(st){ return [].concat(D.weekly || []).filter(w=>w.step===st.i || WEEK_TOPIC_STEP[w.topic]===st.i || [].concat(w.more || []).includes(st.i)); }
+function stepMonths(st){
+  const ws = stepWeeks(st);
+  if(!ws.length){ const l = stepLive(st); return (l && l.months) || []; }
+  const on = new Set(); ws.forEach(w=>[w.from, w.to].forEach(x=>on.add(Number(x.slice(5,7)))));
+  return MONTH_ORDER.filter(m=>on.has(m));
+}
 /* שלבים שהצוות המוביל הוסיף מהמרחב (d.added, 3.11.2026): מספר מ-35 והלאה, בסוף התחום שלהם.
    המספר הוא הכתובת, ולכן הסדר באתר נלקח מ-MAHALACH ולא מהמספר. */
 function stepOf(i){ return STEPS.find(x=>x.i===i) || null; }
@@ -858,8 +868,9 @@ function weeklyHtml(){
 }
 function seasonHtml(){
   const m = new Date().getMonth() + 1;
+  if(WEEK_WAIT > 0) return '';  /* החודשים נגזרים מהשבועות, ולכן מחכים לרשימה החיה כמו תרגול השבוע */
   if(m === 10) return '';  /* אוקטובר ירד מהמהלך השנתי (9.10.2026): מחליטים בשבוע הבא על מהלך שבועי */
-  /* כשחן כבר שיבצה חודשים, הכריכה מציגה את שלבי החודש הנוכחי מהבחירה שלה */
+  /* הכריכה מציגה את שלבי החודש הנוכחי, לפי השיבוץ לשבועות ולפי הסימון הידני של שלב שלא שובץ */
   const now = STEPS.filter(st=>stepMonths(st).includes(m) && stepPractices(st).some(p=>visible(p)));
   if(now.length) return `<section class="season2" aria-labelledby="h-season"><span class="k">עכשיו במהלך השנתי</span><h2 id="h-season">${esc(MONTH_NAME[m])}</h2>
     <div class="chips">${now.map(st=>`<a class="chip" href="#/step/${st.i}">${esc(st.t)}</a>`).join('')}</div></section>`;
