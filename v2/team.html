@@ -186,6 +186,7 @@
   .wkl .empty{font-size:14px;color:var(--ink2)}
   .wkl .acts{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
   .wkl .acts button{min-width:44px;min-height:44px;border:1px solid var(--line);border-radius:12px;background:#fff;font:inherit;font-weight:700;color:var(--ink);cursor:pointer;padding:0 10px}
+  .wkl .w.todo .s{color:#9A5B00;font-weight:700}
   .wkl .mh{font-family:Rubik,sans-serif;font-size:15px;margin:16px 0 2px;color:var(--brand)}
   select.wsel{width:100%;font:inherit;font-size:16px;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)}
   @media (max-width:480px){ .wkl .w{flex-wrap:wrap} .wkl .acts{width:100%;justify-content:flex-start} }
@@ -1428,6 +1429,13 @@ function wkShown(){ var d = new Date(), t = wkF(d), dow = d.getDay(); return dow
 var WK_MONTHS = ["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
 function wkStepOf(i){ return WK ? WK.steps.filter(function(s){ return s.i === i; })[0] : null; }
 function wkCopy(){ return JSON.parse(JSON.stringify(WK.weeks)); }
+/* שבוע הצ'ק אין של אוקטובר נשמר כנושא מהאתר ולא כשלב, והוא השלב "צ'ק אין" במהלך */
+var WK_TOPIC_STEP = {cchekin:3};
+/* כל השבועות שבהם שלב מופיע, גם כשלב נוסף באותו שבוע */
+function wkWeeksOf(i){
+  return WK.weeks.filter(function(w){ return w.step === i || WK_TOPIC_STEP[w.topic] === i || (w.more || []).indexOf(i) >= 0; });
+}
+function wkOpenSteps(){ return WK.steps.filter(function(s){ return !wkWeeksOf(s.i).length; }); }
 
 function renderWeeks(){
   if(WK) return wkDraw();
@@ -1435,19 +1443,72 @@ function renderWeeks(){
   srv("apiWeeks", function(d){ WK = d; wkDraw(); }, [auth()]);
 }
 function wkLabel(w){
-  var st = w.step ? wkStepOf(w.step) : null;
-  if(st) return {t: w.title || st.title, s: (w.title && w.title !== st.title ? st.title + " · " : "") + st.domain};
+  var st = wkStepOf(w.step || WK_TOPIC_STEP[w.topic]);
+  var also = (w.more || []).map(function(m){ var x = typeof m === "number" ? wkStepOf(m) : null; return x ? x.title : ""; }).filter(Boolean);
+  if(st) return {t: w.title || st.title, s: (w.title && w.title !== st.title ? st.title + " · " : "") + st.domain + (also.length ? " · וגם: " + also.join(", ") : "")};
   return {t: w.title || "נושא מהאתר", s: "נושא מהאתר, לא שלב במהלך"};
 }
+/* שתי תצוגות (4.11.2026, בקשת שחף): לפי שבועות רואים רק מה שכבר שובץ, ולכן שלב שעוד לא
+   קיבל תאריך לא הופיע בשום מקום. "לפי המהלך השנתי" מציגה את כל השלבים, ומשם משבצים. */
+var WK_VIEW = "weeks";
 function wkDraw(){
+  var open = wkOpenSteps().length;
+  var h = '<div class="card"><h2>תרגול השבוע באתר</h2>' +
+    '<div class="chips" role="group" aria-label="איך מציגים">' +
+    [["weeks","לפי שבועות"],["steps","לפי המהלך השנתי" + (open ? " (" + open + " בלי תאריך)" : "")]].map(function(x){
+      return '<button type="button" class="chip" aria-pressed="' + (WK_VIEW === x[0]) + '" onclick="WK_VIEW=\'' + x[0] + '\';wkDraw()">' + x[1] + '</button>'; }).join("") + '</div>';
+  $("pane").innerHTML = h + (WK_VIEW === "steps" ? wkDrawSteps() : wkDrawWeeks()) + '</div>';
+}
+function wkTopLines(sub){
+  return '<p class="sub">' + sub + '</p>' +
+    '<div class="mh-status" id="wkStatus" role="status">' + (WK.at ? 'עודכן לאחרונה ' + esc(WK.at) + (WK.by ? ' (' + esc(WK.by) + ')' : '') : '') + '</div>' +
+    '<div class="msg" id="msg" hidden></div>';
+}
+function wkDrawSteps(){
+  var open = wkOpenSteps().length;
+  var h = wkTopLines('כל השלבים של המהלך השנתי, וליד כל אחד השבוע שלו. ' +
+    (open ? 'עוד ' + open + ' מתוך ' + WK.steps.length + ' בלי תאריך. "לשבץ" נותן לבחור שבוע פנוי.' : 'לכל השלבים יש תאריך.')) + '<div class="wkl">';
+  (WK.domains || []).forEach(function(d){
+    h += '<h3 class="mh">' + esc(d.domain) + '</h3>';
+    WK.steps.filter(function(s){ return s.domain === d.domain; }).forEach(function(s){
+      var ws = wkWeeksOf(s.i);
+      h += '<div class="w' + (ws.length ? '' : ' todo') + '"><div class="bd"><span class="t">' + esc(s.title) + '</span><span class="s">' +
+        (ws.length ? ws.map(function(w){ return wkDm(w.from) + '-' + wkDm(w.to); }).join(' · ') : 'עוד לא שובץ') + '</span></div>' +
+        '<div class="acts"><button type="button" onclick="wkPlace(' + s.i + ')">' + (ws.length ? 'שבוע נוסף' : 'לשבץ') + '</button></div></div>';
+    });
+  });
+  return h + '</div>';
+}
+/* השבועות שאין בהם תרגול, מהשבוע הזה ועד סוף השנה */
+function wkFreeWeeks(){
+  var by = {}, out = [], last = WK.weeks.length ? WK.weeks[WK.weeks.length - 1].from : WK_END, end = last > WK_END ? last : WK_END;
+  WK.weeks.forEach(function(w){ by[w.from] = 1; });
+  for(var k = wkSun(wkF(new Date())); k <= end; k = wkAdd(k, 7)) if(!by[k]) out.push(k);
+  return out;
+}
+function wkPlace(i){
+  var s = wkStepOf(i), free = wkFreeWeeks();
+  if(!free.length){ notify('אין שבוע פנוי עד סוף השנה. אפשר לפנות שבוע בתצוגה "לפי שבועות", או להחליף שם את השלב של שבוע מסוים.'); return; }
+  openSheet("שיבוץ: " + s.title,
+    '<div class="msg" id="emsg" hidden></div>' +
+    '<label class="f">באיזה שבוע<select class="wsel" id="wkWeek">' + free.map(function(k){
+      return '<option value="' + k + '">' + wkDm(k) + '-' + wkDm(wkAdd(k, 6)) + '</option>'; }).join("") + '</select></label>' +
+    '<p class="hint">כאן מופיעים רק שבועות פנויים, וחלקם יכולים להיות שבועות חופשה. שבוע תפוס מפנים בתצוגה "לפי שבועות" בעזרת החיצים.</p>' +
+    '<div class="row"><button class="btn" onclick="wkSavePlace(' + i + ')">שיבוץ</button><button class="btn3" onclick="closeSheet()">ביטול</button></div>');
+}
+function wkSavePlace(i){
+  var k = $("wkWeek").value, list = wkCopy();
+  list.push({from:k, to:wkAdd(k, 6), step:i});
+  list.sort(function(x, y){ return x.from < y.from ? -1 : 1; });
+  closeSheet();
+  wkPersist(list, "שובץ לשבוע " + wkDm(k));
+}
+function wkDrawWeeks(){
   var shown = wkShown(), start = WK_PAST ? (WK.weeks.length ? wkSun(WK.weeks[0].from) : shown) : wkSun(wkF(new Date()));
   var last = WK.weeks.length ? WK.weeks[WK.weeks.length - 1].from : WK_END, end = last > WK_END ? last : WK_END;
   var by = {}; WK.weeks.forEach(function(w){ by[w.from] = w; });
-  var h = '<div class="card"><h2>תרגול השבוע באתר</h2>' +
-    '<p class="sub">מה מופיע בכריכת האתר בכל שבוע, תחת "התרגול של השבוע". מיום שישי האתר כבר מציג את השבוע הבא. ' +
-    'החיצים מזיזים תרגול שבוע אחד אחורה או קדימה, ואם השבוע ההוא תפוס, השניים מתחלפים. כל שינוי נשמר לכולן ועולה לאתר תוך כשתי דקות.</p>' +
-    '<div class="mh-status" id="wkStatus" role="status">' + (WK.at ? 'עודכן לאחרונה ' + esc(WK.at) + (WK.by ? ' (' + esc(WK.by) + ')' : '') : '') + '</div>' +
-    '<div class="msg" id="msg" hidden></div>' +
+  var h = wkTopLines('מה מופיע בכריכת האתר בכל שבוע, תחת "התרגול של השבוע". מיום שישי האתר כבר מציג את השבוע הבא. ' +
+    'החיצים מזיזים תרגול שבוע אחד אחורה או קדימה, ואם השבוע ההוא תפוס, השניים מתחלפים. כל שינוי נשמר לכולן ועולה לאתר תוך כשתי דקות.') +
     '<div class="row"><button class="btn3" onclick="WK_PAST=!WK_PAST;wkDraw()">' + (WK_PAST ? 'להסתיר שבועות שעברו' : 'להציג גם שבועות שעברו') + '</button></div>' +
     '<div class="wkl">';
   var lastM = -1;
@@ -1471,7 +1532,7 @@ function wkDraw(){
     }
     h += '</div>';
   }
-  $("pane").innerHTML = h + '</div></div>';
+  return h + '</div>';
 }
 function wkStatus(t, bad){ var el = $("wkStatus"); if(!el) return; el.textContent = t; el.className = "mh-status" + (bad ? " err" : ""); }
 function wkPersist(list, done){
