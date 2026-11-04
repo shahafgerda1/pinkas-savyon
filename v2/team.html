@@ -1189,8 +1189,7 @@ function mhStepLine(s){
 }
 function mhDrawList(){
   var steps = MH.steps, done = steps.filter(function(s){ return s.practices.length; }).length;
-  var domains = []; steps.forEach(function(s){ if(domains.indexOf(s.domain) < 0) domains.push(s.domain); });
-  var chips = [["all","הכל"],["todo","עוד לא שודכו"]].concat(domains.map(function(d){ return [d, d]; }));
+  var chips = [["all","הכל"],["todo","עוד לא שודכו"]].concat((MH.domains || []).map(function(d){ return [d.domain, d.domain]; }));
   var list = steps.filter(function(s){ return MH_FILTER === "all" || (MH_FILTER === "todo" ? !s.practices.length : s.domain === MH_FILTER); });
   var h = '<div class="card"><h2>המהלך השנתי: שידוך תרגולים מהאתר</h2>' +
     '<p class="sub">לכל אחד מ-' + steps.length + ' השלבים של המהלך התרגולי השנתי בוחרים את התרגולים מהאתר שמתאימים לו, ואת החודשים שבהם מתרגלים אותו. ' +
@@ -1216,7 +1215,14 @@ function mhDrawList(){
       '<span class="bd"><span class="t">' + esc(s.title) + (s.added ? ' <span class="tagS">נוסף</span>' : '') + '</span><span class="s">' + mhStepLine(s) + '</span></span></a>';
   });
   if(lastDom) h += addBtn(lastDom);
-  if(!list.length) h += '<p class="hint">' + (MH_FILTER === "todo" ? "כל השלבים שודכו. תודה!" : "אין כאן שלבים.") + '</p>';
+  /* תחום שעוד אין בו שלבים (אחריות סביבתית) מופיע עם הכפתור, אחרת אי אפשר להתחיל אותו */
+  var empty = (MH.domains || []).filter(function(d){
+    return (MH_FILTER === "all" || MH_FILTER === d.domain) && !steps.some(function(s){ return s.domain === d.domain; }); });
+  empty.forEach(function(d){
+    h += '<h3 class="dom"><span class="dot" style="background:' + mhColor(d.part) + '"></span>' + esc(d.domain) + '</h3>' +
+      '<p class="hint">עוד אין שלבים בתחום הזה.</p>' + addBtn(d.domain);
+  });
+  if(!list.length && !empty.length) h += '<p class="hint">' + (MH_FILTER === "todo" ? "כל השלבים שודכו. תודה!" : "אין כאן שלבים.") + '</p>';
   $("pane").innerHTML = h + '</div></div>';
 }
 function mhFilter(f){ MH_FILTER = f; mhDrawList(); }
@@ -1228,7 +1234,7 @@ function mhAddStep(k){
     showOk("מוסיף...");
     srv("apiMahalachAddStep", function(st){
       st._saved = mhCopy(st);
-      var last = -1; MH.steps.forEach(function(x, j){ if(x.domain === st.domain) last = j; });
+      var last = MH.steps.length - 1; MH.steps.forEach(function(x, j){ if(x.domain === st.domain) last = j; });
       MH.steps.splice(last + 1, 0, st);
       WK = null;   /* רשימת השלבים בלשונית "תרגול השבוע" תיטען מחדש */
       mhOpen(st.i);
@@ -1470,6 +1476,7 @@ function wkDrawSteps(){
     (open ? 'עוד ' + open + ' מתוך ' + WK.steps.length + ' בלי תאריך. "לשבץ" נותן לבחור שבוע פנוי.' : 'לכל השלבים יש תאריך.')) + '<div class="wkl">';
   (WK.domains || []).forEach(function(d){
     h += '<h3 class="mh">' + esc(d.domain) + '</h3>';
+    if(!WK.steps.some(function(s){ return s.domain === d.domain; })) h += '<p class="hint">עוד אין שלבים בתחום הזה. מוסיפים אותם בלשונית "המהלך השנתי".</p>';
     WK.steps.filter(function(s){ return s.domain === d.domain; }).forEach(function(s){
       var ws = wkWeeksOf(s.i);
       h += '<div class="w' + (ws.length ? '' : ' todo') + '"><div class="bd"><span class="t">' + esc(s.title) + '</span><span class="s">' +
@@ -1571,6 +1578,7 @@ function wkEdit(k){
   var w = WK.weeks.filter(function(x){ return x.from === k; })[0], cur = w ? (w.step || 0) : 0;
   var opts = (w && !w.step ? '<option value="0" selected>נושא מהאתר, כמו היום</option>' : (w ? '' : '<option value="0" selected>לבחור שלב...</option>'));
   (WK.domains || []).forEach(function(d){
+    if(!WK.steps.some(function(s){ return s.domain === d.domain; })) return;
     opts += '<optgroup label="' + esc(d.domain) + '">' + WK.steps.filter(function(s){ return s.domain === d.domain; }).map(function(s){
       return '<option value="' + s.i + '"' + (s.i === cur ? ' selected' : '') + '>' + esc(s.title) + '</option>'; }).join("") + '</optgroup>';
   });

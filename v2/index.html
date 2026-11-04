@@ -740,7 +740,9 @@ const MAHALACH = [
     {t:'התמודדות עם טעויות', topics:[]},
     {t:'אחריות: למידה מתוך כוונה', topics:[]},
     {t:'התמדה', topics:[]},
-    {t:'ויסות בתסכול, באי הצלחה ובקושי', topics:[]}]}
+    {t:'ויסות בתסכול, באי הצלחה ובקושי', topics:[]}]},
+  /* בלי שלבים קבועים: מה שהצוות המוביל מוסיף מהמרחב נכנס לכאן ב-addSteps. חייב להישאר אחרון, כי מספר השלב נגזר מהמיקום */
+  {part:5, domain:'אחריות סביבתית', goal:'אחריות על הסביבה ועל המרחב שלנו', skills:'שמירה על הטבע ועל המרחב הבית ספרי, קיימאות, חונכות, יוזמה אישית, מילוי תפקיד בעקביות', steps:[]}
 ];
 /* מה מתרגלים עכשיו בשנה, לפי הגיליון. חודשים: 1 ינואר ... 12 דצמבר */
 const SEASONS = [
@@ -784,7 +786,7 @@ function fetchMahalach(){
 /* נושא שהצוות פתח בשם של נושא קיים נחשב כמותו */
 function topicAlias(id){ const t=topicOf(id); if(!t) return id; const same=D.topics.find(x=>x.title===t.title && x.id!==id); return same ? same.id : id; }
 function mahalachHtml(n){
-  const d = MAHALACH.find(x=>x.part===n); if(!d) return '';
+  const d = MAHALACH.find(x=>x.part===n); if(!d || !d.steps.length) return '';
   return `<section class="sect mahalach" aria-labelledby="h-mh"><h2 id="h-mh">${(()=>{ const bt=(bogerCat(n)||{}).title||d.domain; return `המהלך השנתי: ${esc(bt)}${bt!==d.domain?` <span class="sel">(${esc(d.domain)})</span>`:''}`; })()}</h2>
     <p class="hint"><b>${esc(d.goal)}.</b> ${esc(d.skills)}</p>
     <ol class="mh">${d.steps.map(st=>{ const k=stepPractices(st).filter(p=>visible(p)).length, num=stepOrder().indexOf(st)+1;
