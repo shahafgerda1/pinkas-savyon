@@ -775,10 +775,10 @@ function addSteps(list){
   });
 }
 function fetchMahalach(){
-  window.__pinkasMahalach = function(d){ MH_LIVE = (d && d.steps) || {}; addSteps(d && d.added); addSteps(d && d.renamed); render(); };
+  window.__pinkasMahalach = function(d){ MH_LIVE = (d && d.steps) || {}; addSteps(d && d.added); addSteps(d && d.renamed); WEEK_WAIT--; render(); };
   const s = document.createElement('script');
   s.src = ADD_URL + '?api=mahalach&callback=__pinkasMahalach';
-  s.onerror = function(){};  /* בלי רשת: השלבים נשארים עם ההצעה לפי נושא */
+  s.onerror = function(){ WEEK_WAIT--; render(); };  /* בלי רשת: השלבים נשארים עם ההצעה לפי נושא */
   document.body.appendChild(s);
 }
 /* נושא שהצוות פתח בשם של נושא קיים נחשב כמותו */
@@ -819,8 +819,13 @@ function renderStep(i){
   </main>`;
 }
 /* תרגול השבוע (data.weekly, רשימת שבועות מ-fixes.py, 7.10.2026): ראשון עד חמישי מוצג התרגול של השבוע,
-   ומשישי כבר של השבוע הבא, שביום ראשון חוזר להיקרא "השבוע". שבוע בלי תרגול ברשימה: הקטע לא מוצג. */
+   ומשישי כבר של השבוע הבא, שביום ראשון חוזר להיקרא "השבוע". שבוע בלי תרגול ברשימה: הקטע לא מוצג.
+   הקטע מחכה לשתי הרשימות החיות, השבועות ושמות השלבים (4.11.2026), כדי ששם מהקובץ לא יבזיק לפני השם החי.
+   בלי תשובה תוך WEEK_WAIT_MS הוא מוצג מהקובץ. */
+let WEEK_WAIT = 2;
+const WEEK_WAIT_MS = 8000;
 function weeklyHtml(){
+  if(WEEK_WAIT > 0) return '';
   const weeks = [].concat(D.weekly || []); if(!weeks.length) return '';
   const iso = x => x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');
   const d = new Date(), dow = d.getDay(), early = dow >= 5;  /* 5 שישי, 6 שבת */
@@ -1443,11 +1448,12 @@ function applySivug(items){
 /* תרגול השבוע החי (?api=weeks, 3.11.2026): הצוות המוביל קובע מהמרחב מה מתרגלים בכל שבוע.
    הרשימה מהשרת גוברת על weekly שבקובץ; בלי רשת, או כשהשרת מחזיר null, נשארים עם הקובץ. */
 function fetchWeeks(){
-  window.__pinkasWeeks = function(d){ if(d && Array.isArray(d.weeks)){ D.weekly = d.weeks; render(); } };
+  window.__pinkasWeeks = function(d){ if(d && Array.isArray(d.weeks)) D.weekly = d.weeks; WEEK_WAIT--; render(); };
   const s = document.createElement('script');
   s.src = ADD_URL + '?api=weeks&callback=__pinkasWeeks';
-  s.onerror = function(){};
+  s.onerror = function(){ WEEK_WAIT--; render(); };
   document.body.appendChild(s);
+  setTimeout(function(){ if(WEEK_WAIT > 0){ WEEK_WAIT = 0; render(); } }, WEEK_WAIT_MS);
 }
 /* הסיווג והתוספות מגיעים בבקשות נפרדות. סיווג של תוספת שעוד לא נטענה נשמר כאן ומוחל שוב ב-applyAdds */
 let SIVUG = null;

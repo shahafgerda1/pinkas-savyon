@@ -437,6 +437,13 @@ function svType(v){
 var SV_LABEL = {page:"דף להקרנה", audio:"הקלטה", write:"תרגול כתוב", activity:"פעילות", deck:"מצגת"};
 function renderSivug(){
   $("pane").innerHTML = '<div class="card"><h2>בדיקת סיווג</h2><p class="sub">איך כל פריט מסווג ולאילו נושאים הוא משויך. לוחצים על פריט כדי לראות אותו במלואו ולשנות את הסיווג.</p><div id="sv">רגע...</div></div>';
+  /* השבועות מהרשימה החיה (4.11.2026). עד שהיא חוזרת, או אם נכשלה, הבורר נשען על הקובץ */
+  if(!WK) srv("apiWeeks", function(d){
+    WK = d;
+    if(!SV.base) return;
+    if(SV.pick.indexOf("w:") === 0 && !d.weeks.some(function(w){ return "w:" + w.from === SV.pick; })) SV.pick = "";
+    svDraw();
+  }, [auth()], function(){});
   if(window.PINKAS && window.PINKAS.practices && SV.base) return svDraw();
   var s = document.createElement("script");
   s.src = PK_BASE + "data-v2.js?d=" + new Date().toISOString().slice(0,13);
@@ -542,7 +549,7 @@ function svDraw(){
   var T = {}; D.topics.forEach(function(t){ T[t.id] = t; });
   var topic = function(id){ return T[id]; };
   var tname = function(id){ return T[id] ? T[id].title : "(נושא לא קיים)"; };
-  var weeks = D.weekly || [], today = new Date().toISOString().slice(0,10);
+  var weeks = (WK && WK.weeks) || D.weekly || [], today = new Date().toISOString().slice(0,10);
   if(!SV.pick){
     var cur = weeks.filter(function(w){ return w.from <= today && today <= w.to; })[0];
     SV.pick = cur ? "w:" + cur.from : (weeks[0] ? "w:" + weeks[0].from : "all");
@@ -554,7 +561,7 @@ function svDraw(){
   var sel = function(v){ return SV.pick === v ? " selected" : ""; };
   var opts = '<optgroup label="לפי שבוע">' + weeks.map(function(w){
     var tag = w.from <= today && today <= w.to ? " (השבוע)" : (w.from > today ? " (בהמשך)" : "");
-    return '<option value="w:'+w.from+'"'+sel("w:"+w.from)+'>שבוע '+dm(w.from)+'-'+dm(w.to)+': '+esc(w.title || tname(w.topic))+tag+'</option>';
+    return '<option value="w:'+w.from+'"'+sel("w:"+w.from)+'>שבוע '+dm(w.from)+'-'+dm(w.to)+': '+esc(WK && w.step ? wkLabel(w).t : (w.title || tname(w.topic)))+tag+'</option>';
   }).join("") + '</optgroup><optgroup label="לפי נושא">' +
     D.topics.slice().sort(function(a,b){ return a.title.localeCompare(b.title, "he"); }).map(function(t){
       return '<option value="t:'+t.id+'"'+sel("t:"+t.id)+'>'+esc(t.title)+'</option>';
