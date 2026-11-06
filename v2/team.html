@@ -996,7 +996,15 @@ function rvCard(r){
       '<label class="f">למה זה עובד (שורה אחת עם מקור, אפשר להשלים אחר כך)<input type="text" class="why" maxlength="300"></label>' +
       '<div class="row"><button class="btn ok" disabled onclick="approve(\''+r.id+'\')">אישור ופרסום</button>' +
       '<button class="btn2" onclick="giveBack(\''+r.id+'\')">החזרה עם הערה</button></div>') +
+    /* השרת (canTouch_) מתיר הסרה למנהלת ולמי שהעלה בלבד, ולכן רק להן הכפתור מוצג */
+    ((ME.manager || r.mine) ? '<div class="row"><button class="btn3" onclick="rvDel(\''+r.id+'\')">הסרה מהתור: כבר לא רלוונטי</button></div>' : '') +
   '</div>';
+}
+function rvDel(id){
+  var r = PEND.filter(function(x){ return x.id === id; })[0]; if(!r) return;
+  askConfirm('"'+r.title+'" יורד מהתור ולא יפורסם, ובלי מייל למי שהעלה. הקבצים נשארים בדרייב ואפשר להחזיר אותם.', function(){
+    srv("apiDelete", function(){ renderReview(); showOk("התרגול הוסר מהתור."); }, [auth(), id]);
+  }, {title:"להסיר מהתור?", yes:"להסיר"});
 }
 function rvReady(id){
   var el = $("rv_"+id);
